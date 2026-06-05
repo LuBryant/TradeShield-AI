@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Hackathon preparation harness for an AI Risk Agent x eBL-backed trade finance protocol.",
+  "description": "Hackathon harness for an AI dynamic pricing eBL-backed RWA trade finance protocol.",
   "scripts": {
     "install": "node scripts/install.mjs",
     "dev": "node src/app/server.js",
@@ -11,7 +11,8 @@
     "check": "node scripts/check.mjs",
     "demo": "node scripts/demo.mjs",
     "smoke": "node scripts/smoke.mjs",
-    "scenarios": "node scripts/scenarios.mjs"
+    "scenarios": "node scripts/scenarios.mjs",
+    "agent:value": "node scripts/agent-valuation.mjs"
   },
   "engines": {
     "node": ">=18.18.0"

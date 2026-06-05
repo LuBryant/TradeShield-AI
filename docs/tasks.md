@@ -20,7 +20,7 @@
 
 | ID | Task | Owner | Status | Verification | Done Evidence |
 |---|---|---|---|---|---|
-| PM-1 | 固定一句话 pitch：AI dynamically prices eBL-backed RWA | Unassigned | Todo | README / pitch 更新 | - |
+| PM-1 | 固定一句话 pitch：AI dynamically prices eBL-backed RWA | Bowen | Todo | README / pitch 更新 | - |
 | PM-2 | 明确 RWA 折价发行模型：0.80 / 0.90 / 1.00 target redemption | Unassigned | Todo | docs/PRD.md 已体现 | - |
 | PM-3 | 准备 3 分钟 demo 脚本：出口商融资 -> AI 定价 -> 投资者认购 -> 风险改价 | Unassigned | Todo | script 文档或 README 更新 | - |
 | PM-4 | 准备合规 Q&A：target redemption 不是保本承诺 | Unassigned | Todo | docs/PRD.md / pitch 更新 | - |

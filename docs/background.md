@@ -1,8 +1,10 @@
 # TradeShield Agent 背景入门手册
 
 > 给非国际贸易、非供应链金融背景同学的黑客松补课材料。
-> 目标是让团队在 30-60 分钟内理解：为什么电子提单可以成为 RWA 贸易融资的核心资产，为什么 AI Risk Agent 不是装饰，而是这个项目的风险基础设施。
-> 更新时间：2026-06-04。本文用于项目设计和学习，不构成法律意见、投资建议、融资建议或合规意见。
+> 目标是让团队在 30-60 分钟内理解：为什么电子提单可以成为 RWA 贸易融资的核心资产，为什么 **AI Pricing & Risk Agent** 不是装饰，而是这个项目真正给 RWA 折价定价、控制发行额度的核心引擎。
+> 更新时间：2026-06-06。当前主线见 `docs/PRD.md`（v0.2 AI Dynamic Pricing RWA）与 `docs/tasks.md`。本文用于项目设计和学习，不构成法律意见、投资建议、融资建议或合规意见。
+>
+> ⚠️ 模型已升级：早期版本把项目描述成"许可型资金池放贷 + RiskReport 风控"。现在的主线是 **AI 动态定价的 eBL-backed RWA 折价发行**——AI 不只是给风险打分，而是直接决定 RWA 的发行折价、出口商最多能融多少、合约是否暂停发行。本文已对齐新模型。
 
 ---
 
@@ -30,29 +32,31 @@
 
 ## 1. 项目一句话
 
-**TradeShield Agent 是一个基于电子提单的 AI + RWA 贸易融资风控协议：出口商把电子提单质押进智能合约，合格投资者向许可型资金池提供流动性，AI Risk Agent 负责审单、估值、监控运输风险，并把风险结论转化为链上可执行动作。**
+**TradeShield Agent 是一个基于电子提单的 AI 动态定价 RWA 贸易融资协议：出口商把电子提单质押进智能合约，系统发行以该批货物价值为支撑的 RWA 凭证；AI Pricing & Risk Agent 根据出口商到账速度偏好、货物估值、运输/天气/战争/港口/保险/地缘/市场价格风险，动态给出 RWA 的折价发行价格、风险折扣解释、可融资额度上限和链上风控动作。**
 
 英文版：
 
-> TradeShield Agent is an AI-powered risk infrastructure for eBL-backed trade finance.
+> TradeShield turns an electronic bill of lading into a dynamically priced RWA financing pool, where AI prices trade risk before investors buy it.
 
 更适合路演的版本：
 
-> We turn electronic bills of lading into verifiable RWA collateral, and use AI agents to convert off-chain trade risks into on-chain risk actions.
+> We turn electronic bills of lading into verifiable RWA collateral, and let an AI agent price the discount, the financing cap and the risk action before investors subscribe.
 
 一句话拆开看：
 
 | 关键词 | 含义 |
 |---|---|
-| 电子提单 | 代表海运货物权利的电子贸易文件 |
-| RWA | 将现实世界的资产或权利映射到链上 |
-| 贸易融资 | 出口商用贸易单据或货物权利提前获得现金流 |
-| AI Risk Agent | 把单据、货物、运输、市场、保险等链下信息转成结构化风险信号 |
-| 智能合约 | 自动记录质押、融资、还款、预警、冻结、清算等状态 |
+| 电子提单 eBL | 代表海运货物权利的电子贸易文件，是 RWA 的底层抵押物 |
+| RWA 折价发行 | 以货值为支撑发行凭证，按 AI 折价（如 0.80 / 0.90 USD）卖给投资者，目标到期兑付 1 USD |
+| AI Pricing & Risk Agent | 把单据、货物、运输、市场、保险、战争/地缘信息，转成结构化的 **PricingQuote**（折价、额度、动作） |
+| 到账速度偏好 | 出口商越想快拿钱，就要给投资者越高折扣，AI 把"速度↔折扣"显式定价 |
+| 智能合约 | 记录质押、定价、发行、认购、改价、暂停、结算、清算等状态 |
 
-项目的本质不是“发一个提单币”，而是：
+项目的本质不是"发一个提单币"，也不只是"给贸易打个风险分"，而是：
 
-> **把真实贸易资产的风险变得可验证、可定价、可追踪、可执行。**
+> **让 AI 在投资者认购之前，就把真实贸易风险定价成一个可解释、可上链、可执行的 RWA 折价。**
+
+普通 DeFi 只会看 token price 决定清算；TradeShield 让 AI 决定 **RWA 该以什么折价发行**——这才是 AI 真正承担金融功能，而不是当聊天机器人。
 
 ---
 
@@ -129,9 +133,9 @@ TradeShield 的价值就在这里：
 真实贸易
 → 电子提单
 → 链上质押凭证
-→ AI 风险评估
-→ 许可型资金池融资
-→ 动态风险动作
+→ AI 估值 + 折价定价
+→ permissioned 投资者按折价认购 RWA
+→ 动态改价 / 暂停 / 风控动作
 ```
 
 ---
@@ -262,9 +266,9 @@ TradeShield 的替代思路：
 
 TradeShield：
 电子提单链上质押
-+ AI Agent 结构化审单和动态监控
-+ permissioned investor pool
-+ 智能合约自动执行融资、预警、冻结、清算
++ AI Pricing & Risk Agent 估值、折价定价、动态监控
++ permissioned investor pool 按 AI 折价认购 RWA
++ 智能合约自动执行发行、改价、暂停、结算、清算
 ```
 
 ---
@@ -291,16 +295,20 @@ RWA = **Real World Assets**，现实世界资产。
 
 ```text
 出口商获得电子提单
-→ 将电子提单质押进智能合约或登记到 eBL Registry
-→ AI Risk Agent 审核单据、估值、运输与保险风险
-→ 合约创建融资池
-→ 合格投资者向 permissioned pool 提供流动性
-→ 达到融资条件后，合约放款给出口商
-→ 投资者获得融资份额凭证
-→ 运输途中 Agent 持续更新风险
-→ 出口商还款，投资者领取本金和收益
-→ 若发生重大风险，合约进入预警 / 冻结 / 清算 / 追偿流程
+→ 将电子提单质押进智能合约 / 登记到 eBL Registry
+→ AI Pricing & Risk Agent 审单、估值、评估运输/保险/市场/战争风险
+→ AI 输出 PricingQuote：折价发行价、推荐发行量、可融资上限、风险动作
+→ 合约按 AI 折价创建 RWA 发行池（如 1 RWA 发行价 0.85 USD，目标兑付 1 USD）
+→ 合格投资者按折价认购 RWA，资金到账给出口商
+→ 运输途中 Agent 持续监控，风险变化时 RiskPricingOracle 改价 / 暂停 / 冻结
+→ 进口商付款 → 合约结算 → 投资者按目标兑付价赎回 RWA
+→ 若发生重大风险，合约进入暂停发行 / 冻结 / 清算 / 追偿流程
 ```
+
+注意两个关键点：
+
+1. **AI 决定折价，不是事后打分。** 投资者看到的发行价（0.80 / 0.86 / 0.90...）就是 AI 把"到账速度 + 风险"折算出来的结果。
+2. **折价换速度。** 出口商想越快拿钱，AI 给的发行价越低（投资者折扣越大、出口商融资成本越高）；想降低融资成本，就接受慢一点、发行价高一点。
 
 ### 7.2 和普通 DeFi 抵押借贷的区别
 
@@ -317,21 +325,22 @@ TradeShield 的逻辑：
 ```text
 现实贸易资产
 → 电子提单
-→ 单据真实性、货物估值、运输事件、保险覆盖、买方付款风险
-→ AI Agent 生成风险信号
-→ 智能合约执行状态变化
+→ 单据真实性、货物估值、运输事件、保险覆盖、市场价格、战争/地缘风险
+→ AI Pricing & Risk Agent 生成 PricingQuote（折价 + 额度 + 动作）
+→ 智能合约按折价发行 RWA，并随风险改价 / 暂停 / 清算
 ```
 
 核心差异：
 
 | 普通 DeFi | TradeShield |
 |---|---|
-| 抵押物多为链上资产 | 抵押物来自真实贸易权利 |
-| 价格预言机是关键 | 单据、运输、保险、市场、法律信息共同决定风险 |
-| 清算主要看价格 | 风险动作可能来自延误、货损、保险失效、违约 |
+| 抵押物多为链上资产 | 抵押物来自真实贸易权利（eBL） |
+| 价格预言机喂的是 token 价格 | RiskPricingOracle 喂的是 AI 折价、风险等级和合约动作 |
+| 定价靠 AMM / 市场撮合 | **发行折价由 AI 根据到账速度和风险决定** |
+| 清算主要看 token 价格 | 风险动作来自延误、货损、保险失效、战争、价格波动、违约 |
 | 资产容易自动处置 | 提单和货物处置需要法律、承运人、保险、追偿流程 |
 
-这就是为什么本项目需要 AI Agent。
+这就是为什么本项目需要 AI Agent：它要在投资者认购前，把链下风险变成一个可解释的发行折价。
 
 ---
 
@@ -339,71 +348,83 @@ TradeShield 的逻辑：
 
 这是评委和投资人最容易追问的地方。
 
-### 8.1 Token 不是“空气币”
+### 8.1 RWA Token 不是"空气币"
 
-在合规表述中，TradeShield 的 Token 不应该被描述成公开交易的投机币。
+在合规表述中，TradeShield 的 RWA 凭证不应该被描述成公开交易的投机币。
 
 更稳妥的定位是：
 
-> **电子提单融资份额凭证。**
+> **以某批电子提单货权为支撑、折价发行的 RWA 兑付凭证。**
 
-它可能代表：
+它代表：
 
 | 权利 | 含义 |
 |---|---|
-| 融资份额 | 投资者为某笔贸易融资出资的比例 |
-| 收益分配权 | 出口商还款后，按比例领取本金和融资收益 |
-| 质押物受偿权 | 出口商违约时，对提单或货物处置收益按比例受偿 |
-| 链上记账凭证 | 记录谁投了多少钱、对应哪笔贸易、风险状态如何 |
+| 目标兑付权 | 持有人在贸易回款后，按目标兑付价（1 USD / RWA）赎回，**非保本承诺** |
+| 折价认购的上行空间 | 投资者以 0.80 / 0.90 折价买入，回款顺利则赚取折价到 1 USD 的价差 |
+| 质押物受偿权 | 出口商 / 进口商违约时，对提单或货物处置收益按比例受偿 |
+| 链上记账凭证 | 记录谁以什么折价认购、对应哪笔贸易、当前风险和发行状态 |
+
+注意：`1 RWA = 1 USD` 是 **目标到期兑付价 / target redemption value**，不是无条件保本。真实兑付取决于进口商付款、货物处置、保险覆盖和清算结果。
 
 ### 8.2 收益从哪里来
 
-收益不是“Token 自己涨出来的”，而是：
+收益不是"Token 自己涨出来的"，而是：
 
-> **出口商为了提前获得现金流而支付的融资成本。**
+> **出口商为了提前、快速拿到现金流，愿意折价发行 RWA 所让渡的那部分价差。**
 
-例子：
+折价发行的例子（对照 PRD §2）：
 
 ```text
-货物价值：1,000,000 USD
-融资金额：700,000 USD
-融资期限：45 天
-到期还款：720,000 USD
-融资成本：20,000 USD
+货物可验证价值：1,000,000 USD
+出口商希望尽快到账：720,000 USD
+AI 折价发行价：0.80 USD / RWA（出口商选了 FAST 到账）
+发行数量：900,000 RWA
+目标到期兑付总额：900,000 RWA × 1 USD = 900,000 USD
 ```
 
 对出口商：
 
 ```text
-提前拿到 700,000 USD
-可以采购下一批货、支付供应商、接新订单
-20,000 USD 是融资成本
+按 0.80 折价发行 900,000 RWA，立即拿到 720,000 USD
+用这笔钱采购下一批货、付供应商、接新订单
+代价是：到期需要用回款覆盖 900,000 USD 目标兑付，差额 180,000 USD 就是融资成本
 ```
 
 对投资者：
 
 ```text
-提供 700,000 USD 流动性
-承担贸易和违约风险
-20,000 USD 是时间价值 + 风险补偿
+以 0.80 认购，承担贸易和违约风险
+回款顺利时按目标兑付价 1 USD 赎回，毛上行约 25%
+但折价越大，往往意味着 AI 识别到的风险越高（速度溢价或风险溢价）
 ```
 
-### 8.3 为什么要设置 LTV
+关键：**同样是融资成本，旧模型表述为"利息"，新模型把它表述为"发行折价"**——因为它直接体现在投资者认购价上，且由 AI 动态决定。
 
-不能按 100% 货值放款。需要安全垫。
+### 8.3 为什么需要折价 + 兑付覆盖上限（不是简单的 LTV）
+
+不能简单写成"货物 100 万、融资 90 万、发行 90 万枚、每枚 0.8"。因为：
 
 ```text
-LTV = 融资金额 / 经验证货物价值
+900,000 RWA × 0.80 = 720,000 USD
 ```
 
-保守估值公式：
+出口商实际只拿到 72 万，而不是 90 万。所以协议必须同时算清三件事：
 
 ```text
-Verified Cargo Value = min(
-  declared invoice value,
-  quantity × market price,
-  insured value
-)
+token_supply       = target_cash_to_exporter / issue_price
+target_redemption  = token_supply × 1 USD
+target_redemption <= AI_verified_collateral_value × redemption_coverage_limit
+```
+
+保守估值仍然是地基（防止虚高发行）：
+
+```text
+AI Verified Collateral Value = min(
+  发票申报价值,
+  数量 × 市场价格（用历史同类成交价校准）,
+  保险覆盖金额
+)  再按市场波动 / 战争溢价做 haircut
 ```
 
 示例：
@@ -413,18 +434,21 @@ Verified Cargo Value = min(
 市场价格估算：920,000 USD
 保险覆盖金额：900,000 USD
 
-Verified Cargo Value = 900,000 USD
+AI Verified Collateral Value ≈ 900,000 USD（取最小，再视波动 haircut）
 
-若最大 LTV = 70%
-最大融资金额 = 630,000 USD
+若 redemption_coverage_limit = 0.9
+最大目标兑付敞口 = 810,000 USD
+→ 发行价 0.80 时，最多发行 810,000 RWA，出口商最多拿 648,000 USD
 ```
 
-这种设计能防止：
+这套约束能防止：
 
 - 出口商虚高申报货值；
 - 商品价格下跌后抵押不足；
 - 保险覆盖低于货物申报价值；
-- 货损或延误导致处置价值下降。
+- 货损、延误或战争溢价回吐导致处置价值下降。
+
+这也正是 AI 定价真正的价值：**它决定当前风险下，出口商最多能融多少、投资者该以什么折价买、合约是否该暂停发行。**
 
 ### 8.4 二级转让要谨慎表达
 
@@ -500,13 +524,13 @@ Token transfer is permissioned, whitelisted, and limited to eligible investors.
 
 ---
 
-## 10. AI Risk Agent 应该做什么
+## 10. AI Pricing & Risk Agent 应该做什么
 
 黑客松 MVP 不建议做很多 Agent。建议只做一个核心 Agent：
 
-> **Trade Risk Agent：电子提单与货物风险分析 Agent。**
+> **AI Pricing & Risk Agent：电子提单货物估值 + 风险定价 Agent。**
 
-内部可以拆成四个能力模块。
+它的目标不是"写一段风险解释"，而是产出一个可被后端、前端和合约直接消费的 **PricingQuote**：当前风险下 RWA 该以什么折价发行、出口商最多能融多少、合约该开盘 / 改价 / 暂停。内部可以拆成五个能力模块：审单 → 估值 → 运输健康度 → **折价定价** → 输出结构化 PricingQuote。
 
 ### 10.1 Document Verification：审单
 
@@ -539,28 +563,30 @@ Token transfer is permissioned, whitelisted, and limited to eligible investors.
 }
 ```
 
-### 10.2 Valuation：估值与 LTV
+### 10.2 Valuation：估值与可融资上限
 
-目标：防止虚高估值和过度融资。
+目标：防止虚高估值和过度发行。这一步是 RWA 折价定价的地基。
 
-Agent 可以比较：
+Agent 通过工具调用（tool calling）拉取并比较：
 
-- 发票申报价值；
-- 数量 × 市场价格；
+- 发票申报价值（来自商业发票）；
+- 数量 × 实时市场价格（如 LME 铜、ICE Brent）；
+- 历史同类成交价（如 UN Comtrade 按 HS 编码的进出口单价）；
 - 保险金额；
-- 历史交易价格；
-- 大宗商品公开报价；
-- 价格波动区间。
+- 价格波动 / 战争溢价区间（价格在高位 + 高波动时要 haircut）。
+
+> 本仓库已实现一个可运行的估值 tool-calling 例子，见 `src/agent/` 与 `docs/ai-valuation-tooling.md`：AI 调用「实时铜价 / 历史同类成交价 / 本地估值」三个工具，产出下面的结构。
 
 输出示例：
 
 ```json
 {
-  "declared_value_usd": 8500000,
-  "market_value_usd": 7740000,
-  "insured_value_usd": 8000000,
-  "verified_cargo_value_usd": 7740000,
-  "recommended_ltv": 0.68
+  "market_value_usd": 6875000,
+  "declared_invoice_value_usd": 6875000,
+  "insured_value_usd": 7562500,
+  "ai_verified_collateral_value_usd": 6600000,
+  "valuation_basis": "min(invoice, qty×spot, insured) − war-premium volatility haircut",
+  "max_safe_redemption_exposure_usd": 5940000
 }
 ```
 
@@ -590,39 +616,55 @@ Cargo Health Score = 100
 | 部分货损 | -30 |
 | 保险失效 | -40 |
 
-### 10.4 Risk Action：输出链上动作
+### 10.4 Pricing & Risk Action：输出折价和链上动作
 
-Agent 不应该只生成自然语言报告。它必须输出结构化动作，让合约或 workflow 可以消费。
+Agent 不应该只生成自然语言报告。它必须把"速度 + 风险"折算成发行价，并输出结构化动作，让合约直接消费。
 
-| Agent 输出 | 链上动作 |
+折价拆解（可解释、可审计）：
+
+```text
+final_issue_price = base_issue_price − urgency_discount − risk_discount
+base_issue_price  ← 由到账速度档位决定（FAST 0.80 / BALANCED 0.86 / LOW_COST 0.90）
+urgency_discount  ← 出口商越急，折扣越大
+risk_discount     ← 天气 / 战争 / 港口 / 保险 / 价格波动越高，折扣越大
+```
+
+定价动作：
+
+| Agent 输出 pricing_action | 链上动作 |
 |---|---|
-| APPROVE_FINANCING | 允许开启融资池 |
-| CONTINUE_WITH_WARNING | 保持运行，但提示风险 |
-| TRIGGER_MARGIN_CALL | 要求补充保证金或提前部分还款 |
-| FREEZE_POOL | 冻结放款、转让或赎回 |
+| OPEN_OFFERING | 按 final price 开盘发行 |
+| OPEN_WITH_WARNING | 开盘但展示风险提示 |
+| REPRICE_DOWN | 风险上升，下调发行价 / 缩减额度 |
+| PAUSE_OFFERING | 暂停认购 |
+| FREEZE_POOL | 冻结发行、转让或赎回 |
 | TRIGGER_LIQUIDATION | 进入清算 / 处置 / 追偿流程 |
 
-最小结构化报告：
+最小结构化输出就是 PRD §8.4 的 **PricingQuote**（节选）：
 
 ```ts
-type RiskReport = {
+type PricingQuote = {
+  case_id: string;
+  ai_verified_collateral_value_usd: number;
+  max_safe_redemption_exposure_usd: number;
+  recommended_token_supply: number;
+  base_issue_price_usd: number;
+  urgency_discount_bps: number;
+  risk_discount_bps: number;
+  final_issue_price_usd: number;
+  expected_cash_to_exporter_usd: number;
+  implied_gross_yield_bps: number;
   risk_level: 'LOW' | 'MEDIUM' | 'WARNING' | 'CRITICAL';
-  cargo_health_score: number;
-  verified_cargo_value_usd: number;
-  adjusted_collateral_value_usd: number;
-  health_factor: number;
-  recommended_ltv: number;
-  contract_action:
-    | 'APPROVE_FINANCING'
-    | 'CONTINUE_WITH_WARNING'
-    | 'TRIGGER_MARGIN_CALL'
-    | 'FREEZE_POOL'
-    | 'TRIGGER_LIQUIDATION';
-  detected_risks: string[];
-  explanation: string;
+  pricing_action:
+    | 'OPEN_OFFERING' | 'OPEN_WITH_WARNING' | 'REPRICE_DOWN'
+    | 'PAUSE_OFFERING' | 'FREEZE_POOL' | 'TRIGGER_LIQUIDATION';
+  risk_factors: string[];
+  investor_explanation: string;
   evidence_hash: string;
 };
 ```
+
+> 注：当前仓库 `riskEngine.js` 仍输出旧版 `RiskReport`（`contract_action`）。把它升级成 `PricingQuote` 是 `tasks.md` 里 AI-1 / BE-2 的工作；本文描述的是目标结构。
 
 ### 10.5 Agent 的关键定位
 
@@ -632,117 +674,119 @@ type RiskReport = {
 
 要说成：
 
-> **它把链下贸易风险转化为链上可执行的结构化风控信号。**
+> **它在投资者认购之前，把链下贸易风险定价成一个可解释、可上链的 RWA 折价。**
 
-这才是 AI + Web3 的结合点。
+这才是 AI + Web3 的结合点：AI 不是装饰，而是承担"定价 + 额度 + 风控动作"这个核心金融功能。
 
 ---
 
 ## 11. 智能合约状态机和链上动作
 
-TradeShield 的链上逻辑可以先用 JS mock，后续再替换成 Solidity 合约。
+TradeShield 的链上逻辑可以先用 JS mock，后续再替换成 Solidity 合约（`RWAOfferingPool` + `RiskPricingOracle`，见 PRD §9.3）。
 
 ### 11.1 正常路径
 
 ```text
 Created
-→ Funding
-→ Funded
-→ InTransit
-→ Repaid
-→ Redeemed
+→ Priced      （AI 给出 PricingQuote，确定发行价和发行量）
+→ Open        （按折价开盘，投资者可认购）
+→ Subscribed  （认购达到目标）
+→ Funded      （资金到账给出口商）
+→ InTransit   （运输中，Agent 持续监控）
+→ Repaid      （进口商付款 / 出口商还款）
+→ Redeemed    （投资者按目标兑付价赎回 RWA）
 ```
 
 含义：
 
 | 状态 | 含义 |
 |---|---|
-| Created | 出口商提交 eBL 融资请求 |
-| Funding | 资金池开放，合格投资者出资 |
-| Funded | 融资目标达成 |
-| InTransit | 货物运输中，Agent 持续监控 |
-| Repaid | 出口商还款 |
-| Redeemed | 投资者领取本金和收益 |
+| Created | 出口商质押 eBL、提交融资请求和到账速度偏好 |
+| Priced | AI Pricing Agent 输出 PricingQuote，写入 RiskPricingOracle |
+| Open | 按 final issue price 开盘，permissioned 投资者可认购 |
+| Subscribed | 认购达到目标发行量 |
+| Funded | 资金按发行折价到账给出口商 |
+| InTransit | 货物运输中，Agent 持续监控风险 |
+| Repaid | 进口商付款，合约收到回款 |
+| Redeemed | 投资者按目标兑付价赎回 |
 
 ### 11.2 异常路径
 
 ```text
-Funding → Cancelled → Refunded
-InTransit → Warning → Frozen → Default → Liquidation → Compensated
+Open / InTransit → Repriced → Paused → Frozen → Liquidation / Defaulted
+Created / Open   → Cancelled
 ```
 
 含义：
 
 | 状态 | 触发原因 |
 |---|---|
-| Warning | 延误、价格下跌、保险临近到期等中等风险 |
-| Frozen | 风险升高，暂停转让或资金流出 |
-| Default | 出口商未按约还款或重大违约 |
-| Liquidation | 启动提单、货物、保险或追偿处置 |
-| Compensated | 处置或赔付后分配给投资者 |
+| Repriced | 风险上升，AI 下调发行价 / 缩减额度（REPRICE_DOWN） |
+| Paused | 风险升高，暂停新认购（PAUSE_OFFERING） |
+| Frozen | 冻结发行、转让或赎回（FREEZE_POOL） |
+| Liquidation | 启动提单、货物、保险或追偿处置（TRIGGER_LIQUIDATION） |
+| Defaulted | 进口商拒付 / 出口商重大违约 |
+| Cancelled | 未开盘或未达认购，退回 |
 
 ### 11.3 合约应该记录什么
 
 MVP 中可以先记录：
 
 - eBL metadata hash；
-- financing amount；
-- funded amount；
-- investor shares；
-- risk score；
-- health factor；
-- latest action；
-- evidence hash；
-- pool state。
+- pricing quote hash / evidence hash；
+- final issue price 和 target redemption value；
+- recommended token supply 和 subscribed amount；
+- risk level 和 pricing action；
+- offering state。
 
 真实合约不需要一开始就很复杂。黑客松最重要的是让评委看到：
 
 ```text
-Agent 发现风险
-→ 输出结构化 action
-→ workflow / contract state 发生变化
-→ 投资者能看到原因和证据哈希
+Agent 给出折价定价
+→ 写入 RiskPricingOracle（issue price + risk + action + evidence hash）
+→ RWAOfferingPool 状态随之 Open / Repriced / Paused / Frozen
+→ 投资者能看到价格、目标兑付价、风险来源和证据哈希
 ```
 
 ---
 
 ## 12. 黑客松 Demo 怎么讲才有说服力
 
-推荐 Demo 剧情：
+推荐 Demo 剧情（对齐 `data/uploads/` 的新数据）：
 
 ```text
-1. 出口商 Shanghai Metals Export Co. 上传电子提单融资请求
-2. 货物是 Copper Cathodes，路线 Shanghai → Hamburg
-3. AI Risk Agent 检查提单、发票、保险和估值
-4. Agent 生成 LOW / MEDIUM 风险报告，合约开启融资池
-5. 合格投资者向池子存入 USDC
-6. 合约放款给出口商
-7. 运输途中出现坏天气、ETA 延误、铜价下跌、保险接近到期
-8. Agent 重新计算 Cargo Health、Verified Value、Health Factor
-9. 合约状态从 InTransit 进入 Warning / Frozen / Liquidation
-10. 投资者界面展示风险原因、扣分项、证据哈希和合约动作
+1. 出口商（新加坡铜贸易商 Strait Resources）上传 eBL + 商业发票
+2. 货物：LME Grade A 铜阴极板 500 吨，路线 Singapore → Shanghai
+3. AI Pricing & Risk Agent 调用工具：实时 LME 铜价 + 历史同类成交价 + 估值
+4. AI 给出 PricingQuote：verified collateral、推荐发行量、发行折价
+5. 出口商选 FAST 到账 → AI 给出发行价 0.85，开盘发行 RWA
+6. 投资者按 0.85 折价认购，资金到账给出口商
+7. 运输途中：霍尔木兹海峡战争升级、铜价剧烈波动、保险接近到期
+8. AI 重新定价：risk discount 拉大，发行价从 0.85 压到 0.78
+9. RiskPricingOracle 写入新价 + 证据哈希，RWAOfferingPool 进入 Repriced / Paused
+10. 投资者界面展示：发行价、目标兑付价、隐含收益、风险来源、证据哈希
 ```
 
 评委应该看到四件事：
 
 ```text
 AI 不是聊天机器人
-AI 识别了真实贸易风险
-AI 输出了结构化结果
-区块链透明执行了风险处置
+AI 调用工具拉了真实价格和历史成交价
+AI 把风险定成了一个具体的发行折价（0.85 → 0.78）
+区块链透明记录了定价、改价和证据哈希
 ```
 
 ### 12.1 15 秒路演版本
 
-> TradeShield Agent 是一个基于电子提单的 AI + RWA 贸易融资协议。出口商把电子提单质押进智能合约，合格投资者向许可型资金池提供流动性，AI Agent 负责审单、估值、运输健康度监控和风险动作触发。
+> TradeShield 把一张电子提单变成一个由 AI 动态定价的 RWA 折价发行池：出口商质押 eBL，AI 根据到账速度和贸易风险给出发行折价，投资者在认购前就看到价格、目标兑付价和风险来源。
 
 ### 12.2 30 秒路演版本
 
-> 全球贸易融资缺口仍然巨大，中小出口商即使有真实订单和真实货物，也经常因为信用不足或单据审核成本高，无法及时获得融资。TradeShield 把电子提单作为 RWA 抵押物，通过智能合约完成融资和状态管理，通过 AI Agent 审核提单、评估货物价值、监控运输事件，并把链下风险转成链上可执行的预警、冻结或清算动作。我们不是开放众筹平台，而是面向合格投资者和受监管机构的 permissioned trade finance infrastructure。
+> 全球贸易融资缺口仍然巨大，中小出口商即使有真实订单和货物，也经常拿不到快速、透明定价的融资。TradeShield 把电子提单作为 RWA 抵押物，让 AI Pricing & Risk Agent 调用实时行情和历史成交价完成估值，再把"到账速度 + 战争/天气/保险/价格风险"折算成一个可解释的 RWA 发行折价，写入链上 RiskPricingOracle。出口商越想快拿钱、风险越高，折价就越大。我们不做公开众筹，而是面向合格投资者的、AI 定价的 permissioned 贸易融资基础设施。
 
 ### 12.3 最强收束句
 
-> **普通 DeFi 清算的是 Token 价格；TradeShield Agent 清算的是现实世界贸易风险。**
+> **普通 DeFi 让市场猜价格；TradeShield 让 AI 在投资者下单前，就把贸易风险定成 RWA 的折价。**
 
 ---
 
@@ -842,9 +886,9 @@ Phase 3：Network
 
 ## 15. 评委可能问的问题
 
-### Q1：为什么投资者相信这个 Token 有价值？
+### Q1：为什么投资者相信这个 RWA 有价值？
 
-因为它不是空气币，而是某笔电子提单融资的份额凭证。底层有真实贸易、电子提单、货物、保险和还款安排。AI Agent 会审查单据真实性、估值合理性、运输状态和风险事件。
+因为它不是空气币，而是某批电子提单货权支撑、折价发行的兑付凭证。底层有真实贸易、电子提单、货物、保险和回款安排。投资者以折价（如 0.85）认购，回款顺利时按目标兑付价 1 USD 赎回——`1 RWA = 1 USD` 是目标兑付价，**不是保本承诺**。AI Pricing & Risk Agent 会审查单据真实性、估值合理性、运输和市场风险，并据此决定这个折价该是多少。
 
 ### Q2：如果出口商不还钱怎么办？
 
@@ -856,7 +900,7 @@ Demo 阶段使用 mock 数据。真实落地可接入电子提单平台、承运
 
 ### Q4：为什么不用普通 DeFi 预言机？
 
-普通价格预言机只能告诉你 Token 或商品价格，不能判断提单是否真实、保险是否覆盖、船是否延误、货是否损坏、进口商是否可能拒付。电子提单 RWA 需要多源链下风险分析。
+普通价格预言机只能喂 token 或商品价格，不能判断提单是否真实、保险是否覆盖、船是否延误、货是否损坏、战争是否影响航线、进口商是否可能拒付——更不能据此给出一个发行折价。TradeShield 的 RiskPricingOracle 喂的是 AI 综合多源链下风险后算出的 issue price、风险等级和合约动作。
 
 ### Q5：这是不是非法集资？
 
@@ -874,7 +918,7 @@ Demo 阶段使用 mock 数据。真实落地可接入电子提单平台、承运
 
 ### Q7：为什么需要 AI？
 
-因为关键风险在链下。AI Agent 负责从单据、运输事件、保险、价格和贸易背景中提取结构化风险信号，并解释为什么合约应该预警、冻结或清算。
+因为关键风险在链下，而且这些风险最终要变成一个**数字**——发行折价。AI Agent 从单据、运输事件、保险、实时行情、历史成交价和战争/地缘背景中提取结构化信号，把"到账速度 + 风险"折算成 RWA 的发行价（base − urgency discount − risk discount），并解释为什么合约应该开盘、改价、暂停或清算。
 
 ---
 
@@ -931,8 +975,11 @@ Demo 阶段使用 mock 数据。真实落地可接入电子提单平台、承运
 
 - `Materials/web3_trade_finance_consolidated/web3_trade_finance_consolidated.md`
 - `Materials/20260602会议.md`
-- `docs/PRD.md`
-- `data/demo-case.json`
+- `docs/PRD.md`（当前主线：v0.2 AI Dynamic Pricing RWA）
+- `docs/tasks.md`（任务拆分）
+- `data/uploads/`（拟真提单 + 商业发票样例：新加坡铜 / 原油）
+- `data/demo-case.json`（旧 RiskReport harness 数据，迁移中）
+- `docs/ai-valuation-tooling.md`（AI 估值与历史成交价 tool calling）
 
 ### 17.2 国际贸易与电子提单
 
@@ -958,15 +1005,15 @@ Demo 阶段使用 mock 数据。真实落地可接入电子提单平台、承运
 ```text
 电子提单 = 代表货物权利的电子贸易文件
 
-RWA = 把这类现实权利映射成链上可记录、可转让、可结算的凭证
+RWA = 以这批货权为支撑、折价发行、目标兑付 1 USD 的链上凭证
 
-贸易融资 = 出口商用未来回款和提单质押，提前获得现金流
+贸易融资 = 出口商用提单质押 + 折价发行 RWA，提前拿到现金流
 
-AI Risk Agent = 把链下贸易风险转成结构化合约动作
+AI Pricing & Risk Agent = 把"到账速度 + 链下风险"折算成 RWA 发行折价和合约动作
 
-智能合约 = 记录融资、份额、风险状态和处置流程
+智能合约 = 记录定价、发行、认购、改价、暂停、结算和清算
 ```
 
 最终要让评委记住：
 
-> **TradeShield Agent 不是把贸易文件变成炒作 Token，而是把电子提单背后的真实贸易风险变成透明、可解释、可执行的链上风控基础设施。**
+> **TradeShield 不是把贸易文件变成炒作 Token，而是让 AI 在投资者认购前，把电子提单背后的真实贸易风险定价成一个透明、可解释、可上链的 RWA 折价。**
