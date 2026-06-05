@@ -34,7 +34,7 @@ AI 的目标不是“写一段解释”，而是产出可被后端、前端和�
 
 | ID | Task | Owner | Status | Verification | Done Evidence |
 |---|---|---|---|---|---|
-| AI-1 | 固定 `PricingQuote` JSON schema | Unassigned | Todo | `npm run test` | - |
+| AI-1 | 固定 `PricingQuote` JSON schema | Bowen | Todo | `npm run test` | - |
 | AI-2 | 实现 base issue price：根据 `payout_speed` 输出 0.80 / 0.86 / 0.90 等基础价格 | Unassigned | Todo | pricing unit test | - |
 | AI-3 | 实现 urgency discount：出口商越急，发行价越低 | Unassigned | Todo | scenario test | - |
 | AI-4 | 实现 risk discount：天气、战争、港口、保险、价格波动影响发行价 | Unassigned | Todo | `npm run scenarios` | - |
