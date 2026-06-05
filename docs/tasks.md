@@ -20,7 +20,7 @@
 
 | ID | Task | Owner | Status | Verification | Done Evidence |
 |---|---|---|---|---|---|
-| PM-1 | 固定一句话 pitch：AI dynamically prices eBL-backed RWA | Bowen | Todo | README / pitch 更新 | - |
+| PM-1 | 固定一句话 pitch：AI dynamically prices eBL-backed RWA | Bowen | Done | README / pitch 更新 | - |
 | PM-2 | 明确 RWA 折价发行模型：0.80 / 0.90 / 1.00 target redemption | Unassigned | Todo | docs/PRD.md 已体现 | - |
 | PM-3 | 准备 3 分钟 demo 脚本：出口商融资 -> AI 定价 -> 投资者认购 -> 风险改价 | Unassigned | Todo | script 文档或 README 更新 | - |
 | PM-4 | 准备合规 Q&A：target redemption 不是保本承诺 | Unassigned | Todo | docs/PRD.md / pitch 更新 | - |
@@ -34,7 +34,7 @@ AI 的目标不是“写一段解释”，而是产出可被后端、前端和�
 
 | ID | Task | Owner | Status | Verification | Done Evidence |
 |---|---|---|---|---|---|
-| AI-1 | 固定 `PricingQuote` JSON schema | Bowen | Todo | `npm run test` | - |
+| AI-1 | 固定 `PricingQuote` JSON schema | Bowen | Processing | `npm run test` | - |
 | AI-2 | 实现 base issue price：根据 `payout_speed` 输出 0.80 / 0.86 / 0.90 等基础价格 | Unassigned | Todo | pricing unit test | - |
 | AI-3 | 实现 urgency discount：出口商越急，发行价越低 | Unassigned | Todo | scenario test | - |
 | AI-4 | 实现 risk discount：天气、战争、港口、保险、价格波动影响发行价 | Unassigned | Todo | `npm run scenarios` | - |
