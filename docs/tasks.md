@@ -12,7 +12,7 @@
 | P0 | 跑通 AI 定价主链路 | 出口商选择到账速度，AI 给出 RWA 发行价，投资者看到折价和风险 |
 | P0 | 固定 PricingQuote schema | 让 AI、后端、前端、合约都围绕同一份结构化输出 |
 | P0 | 完成 Investor RWA Offering 页面 | 评委必须看到“风险越高，价格越低，潜在收益越高” |
-| P1 | 合约 mock / 最小 Solidity | RWAOfferingPool + RiskPricingOracle |
+| P1 | 合约 mock / 最小 Solidity | RWAOfferingPool + RiskPricingOracle（**WEB3-1~9 Done**；WEB3-10~11 待做） |
 | P1 | 多场景回归 | fast / balanced / high-risk repricing |
 | P2 | MCP / RAG / Skill | 作为 Agent 能力加分项，不阻塞主 demo |
 
@@ -85,17 +85,26 @@ AI 的目标不是“写一段解释”，而是产出可被后端、前端和�
 
 Web3 目标：把 AI 定价结果写成链上可验证事件，而不是只在前端展示。
 
+**进度摘要（2026-06-05）**
+
+| 范围 | 状态 | 说明 |
+|---|---|---|
+| WEB3-1 ~ WEB3-4 | Done | 冻结设计见 `docs/contracts.md` |
+| WEB3-5 | Done | JS contract mock：`src/core/contractHarness.js` |
+| WEB3-6 ~ WEB3-9 | Done | Hardhat 合约 + 测试：`hardhat/`，`hardhat test` 6 passing |
+| WEB3-10 ~ WEB3-11 | Todo | 测试网部署 |
+
 | ID | Task | Owner | Status | Verification | Done Evidence |
 |---|---|---|---|---|---|
-| WEB3-1 | 设计 `EBLRegistry`：mint / pledge / release pledge | Sage | Todo | docs/PRD.md 更新 | - |
-| WEB3-2 | 设计 `RWAToken`：代表投资者 RWA 凭证 | Sage | Todo | contract interface doc | - |
-| WEB3-3 | 设计 `RWAOfferingPool`：createOffering / subscribe / settle / pause | Sage | Todo | contract interface doc | - |
-| WEB3-4 | 设计 `RiskPricingOracle`：updatePricing(poolId, issuePrice, riskLevel, action, evidenceHash) | Sage | Todo | contract interface doc | - |
-| WEB3-5 | 实现 JS contract mock：模拟发行、认购、改价、暂停 | Sage | Todo | `npm run test` | - |
-| WEB3-6 | 建立 Hardhat 合约目录结构 | Sage | Todo | `hardhat compile` | - |
-| WEB3-7 | 实现最小 Solidity `RiskPricingOracle` 并 emit `PricingUpdated` | Sage | Todo | `hardhat test` | - |
-| WEB3-8 | 实现最小 Solidity `RWAOfferingPool` | Sage | Todo | `hardhat test` | - |
-| WEB3-9 | 把 `quote_hash` / `evidence_hash` 写入合约事件 | Sage | Todo | contract event test | - |
+| WEB3-1 | 设计 `EBLRegistry`：mint / pledge / release pledge | Sage | Done | docs/PRD.md 更新 | `docs/contracts.md` §3 + `docs/PRD.md` §9.3 |
+| WEB3-2 | 设计 `RWAToken`：代表投资者 RWA 凭证 | Sage | Done | contract interface doc | `docs/contracts.md` §4 |
+| WEB3-3 | 设计 `RWAOfferingPool`：createOffering / subscribe / settle / pause | Sage | Done | contract interface doc | `docs/contracts.md` §5 |
+| WEB3-4 | 设计 `RiskPricingOracle`：updatePricing(poolId, issuePrice, riskLevel, action, evidenceHash) | Sage | Done | contract interface doc | `docs/contracts.md` §6 |
+| WEB3-5 | 实现 JS contract mock：模拟发行、认购、改价、暂停 | Sage | Done | `npm run test` | `src/core/contractHarness.js` + `tests/contractHarness.test.js`，`npm run test` 10 passed，事件已对齐 `docs/contracts.md` |
+| WEB3-6 | 建立 Hardhat 合约目录结构 | Sage | Done | `hardhat compile` | `hardhat/`（package.json + hardhat.config.cjs），`hardhat compile` 4 files OK |
+| WEB3-7 | 实现最小 Solidity `RiskPricingOracle` 并 emit `PricingUpdated` | Sage | Done | `hardhat test` | `hardhat/contracts/RiskPricingOracle.sol`，`hardhat test` 6 passing |
+| WEB3-8 | 实现最小 Solidity `RWAOfferingPool` | Sage | Done | `hardhat test` | `hardhat/contracts/RWAOfferingPool.sol`（+ EBLRegistry/RWAToken），`hardhat test` 6 passing |
+| WEB3-9 | 把 `quote_hash` / `evidence_hash` 写入合约事件 | Sage | Done | contract event test | `PricingUpdated` + `OfferingRepriced` 含 evidence/quote hash，`latestQuoteHash/latestEvidenceHash` 持久化，测试已验证 |
 | WEB3-10 | 部署到 Sepolia 或 Base Sepolia 测试网 | Sage | Todo | 部署地址 + tx hash | - |
 | WEB3-11 | 前端展示合约地址和 PricingUpdated event | Sage | Todo | 手动演示 | - |
 
@@ -128,7 +137,7 @@ QA 目标：任何新增功能都必须回到同一条主链路，不能散。
 | QA-5 | 增加 pricing invariant tests：兑付敞口不能超过安全覆盖 | Unassigned | Todo | `npm run test` | - |
 | QA-6 | 增加前端手动验收清单 | Unassigned | Todo | checklist 文档 | - |
 | QA-7 | 最终演示前跑完整验证矩阵 | Unassigned | Todo | `npm run check && npm run test && npm run smoke && npm run scenarios && npm run demo` | - |
-| QA-8 | 准备演示失败兜底：CLI demo、mock provider、contract mock | Unassigned | Todo | README / docs 更新 | - |
+| QA-8 | 准备演示失败兜底：CLI demo、mock provider、contract mock | Unassigned | Todo | README / docs 更新 | contract mock 已完成（`contractHarness.js`）；CLI demo / README 兜底说明待补 |
 | QA-9 | 最后 6 小时功能冻结协调 | Unassigned | Todo | 全员确认 | - |
 
 ## 9. 推荐并行分工
