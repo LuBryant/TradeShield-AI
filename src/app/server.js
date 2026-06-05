@@ -1,7 +1,7 @@
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { calculateRisk } from '../core/riskEngine.js';
 import { runHarnessScenarios, runScenario } from '../core/scenarioRunner.js';
 import { assertRiskReport, assertTradeCase, ValidationError } from '../core/schema.js';
@@ -122,7 +122,7 @@ export function createServer() {
   });
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const port = Number(process.env.PORT ?? 3000);
   createServer().listen(port, () => {
     console.log(`TradeShield Agent harness running at http://localhost:${port}`);

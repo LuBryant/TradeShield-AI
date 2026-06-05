@@ -87,17 +87,17 @@ Web3 目标：把 AI 定价结果写成链上可验证事件，而不是只在�
 
 | ID | Task | Owner | Status | Verification | Done Evidence |
 |---|---|---|---|---|---|
-| WEB3-1 | 设计 `EBLRegistry`：mint / pledge / release pledge | Unassigned | Todo | docs/PRD.md 更新 | - |
-| WEB3-2 | 设计 `RWAToken`：代表投资者 RWA 凭证 | Unassigned | Todo | contract interface doc | - |
-| WEB3-3 | 设计 `RWAOfferingPool`：createOffering / subscribe / settle / pause | Unassigned | Todo | contract interface doc | - |
-| WEB3-4 | 设计 `RiskPricingOracle`：updatePricing(poolId, issuePrice, riskLevel, action, evidenceHash) | Unassigned | Todo | contract interface doc | - |
-| WEB3-5 | 实现 JS contract mock：模拟发行、认购、改价、暂停 | Unassigned | Todo | `npm run test` | - |
-| WEB3-6 | 建立 Hardhat 合约目录结构 | Unassigned | Todo | `hardhat compile` | - |
-| WEB3-7 | 实现最小 Solidity `RiskPricingOracle` 并 emit `PricingUpdated` | Unassigned | Todo | `hardhat test` | - |
-| WEB3-8 | 实现最小 Solidity `RWAOfferingPool` | Unassigned | Todo | `hardhat test` | - |
-| WEB3-9 | 把 `quote_hash` / `evidence_hash` 写入合约事件 | Unassigned | Todo | contract event test | - |
-| WEB3-10 | 部署到 Sepolia 或 Base Sepolia 测试网 | Unassigned | Todo | 部署地址 + tx hash | - |
-| WEB3-11 | 前端展示合约地址和 PricingUpdated event | Unassigned | Todo | 手动演示 | - |
+| WEB3-1 | 设计 `EBLRegistry`：mint / pledge / release pledge | Sage | Todo | docs/PRD.md 更新 | - |
+| WEB3-2 | 设计 `RWAToken`：代表投资者 RWA 凭证 | Sage | Todo | contract interface doc | - |
+| WEB3-3 | 设计 `RWAOfferingPool`：createOffering / subscribe / settle / pause | Sage | Todo | contract interface doc | - |
+| WEB3-4 | 设计 `RiskPricingOracle`：updatePricing(poolId, issuePrice, riskLevel, action, evidenceHash) | Sage | Todo | contract interface doc | - |
+| WEB3-5 | 实现 JS contract mock：模拟发行、认购、改价、暂停 | Sage | Todo | `npm run test` | - |
+| WEB3-6 | 建立 Hardhat 合约目录结构 | Sage | Todo | `hardhat compile` | - |
+| WEB3-7 | 实现最小 Solidity `RiskPricingOracle` 并 emit `PricingUpdated` | Sage | Todo | `hardhat test` | - |
+| WEB3-8 | 实现最小 Solidity `RWAOfferingPool` | Sage | Todo | `hardhat test` | - |
+| WEB3-9 | 把 `quote_hash` / `evidence_hash` 写入合约事件 | Sage | Todo | contract event test | - |
+| WEB3-10 | 部署到 Sepolia 或 Base Sepolia 测试网 | Sage | Todo | 部署地址 + tx hash | - |
+| WEB3-11 | 前端展示合约地址和 PricingUpdated event | Sage | Todo | 手动演示 | - |
 
 ## 7. MCP / RAG / Skill
 
