@@ -34,18 +34,18 @@ AI 的目标不是“写一段解释”，而是产出可被后端、前端和�
 
 | ID | Task | Owner | Status | Verification | Done Evidence |
 |---|---|---|---|---|---|
-| AI-1 | 固定 `PricingQuote` JSON schema | Bowen | Processing | `npm run test` | - |
-| AI-2 | 实现 base issue price：根据 `payout_speed` 输出 0.80 / 0.86 / 0.90 等基础价格 | Unassigned | Todo | pricing unit test | - |
-| AI-3 | 实现 urgency discount：出口商越急，发行价越低 | Unassigned | Todo | scenario test | - |
-| AI-4 | 实现 risk discount：天气、战争、港口、保险、价格波动影响发行价 | Unassigned | Todo | `npm run scenarios` | - |
-| AI-5 | 实现 collateral coverage guardrail：防止 100 万货物发行过高目标兑付敞口 | Unassigned | Todo | pricing invariant test | - |
-| AI-6 | 实现 investor explanation generator：解释为什么价格是 0.80 / 0.90 | Unassigned | Todo | `npm run demo` 输出包含 explanation | - |
-| AI-7 | 实现 evidence graph mock：列出每个折扣对应的证据 | Unassigned | Todo | schema test | - |
-| AI-8 | 实现 document consistency checker：eBL / invoice / insurance 字段一致性 | Unassigned | Todo | fixture test | - |
-| AI-9 | 接入 Qwen / DeepSeek 可选 provider，必须有 deterministic fallback | Unassigned | Todo | provider fallback test | - |
-| AI-10 | 生成 high-risk scenario：战争 / 严重天气 / 保险缺口导致降价或暂停 | Unassigned | Todo | `npm run scenarios` | - |
-| AI-11 | 建立 RAG 风险情报知识库：项目文档 + mock macro risk feed | Unassigned | Todo | retrieval eval | - |
-| AI-12 | 做 Judge Q&A assistant：解释 AI 定价、非保本、合约动作 | Unassigned | Todo | 彩排通过 | - |
+| AI-1 | 固定 `PricingQuote` JSON schema | Bowen | In Progress | `npm run test` | - |
+| AI-2 | 实现 base issue price：根据 `payout_speed` 输出 0.80 / 0.86 / 0.90 等基础价格 | Bowen | In Progress | pricing unit test | - |
+| AI-3 | 实现 urgency discount：出口商越急，发行价越低 | Bowen | In Progress | scenario test | - |
+| AI-4 | 实现 risk discount：天气、战争、港口、保险、价格波动影响发行价 | Bowen | In Progress | `npm run scenarios` | - |
+| AI-5 | 实现 collateral coverage guardrail：防止 100 万货物发行过高目标兑付敞口 | Bowen | In Progress | pricing invariant test | - |
+| AI-6 | 实现 investor explanation generator：解释为什么价格是 0.80 / 0.90 | Bowen | In Progress | `npm run demo` 输出包含 explanation | - |
+| AI-7 | 实现 evidence graph mock：列出每个折扣对应的证据 | Bowen | In Progress | schema test | - |
+| AI-8 | 实现 document consistency checker：eBL / invoice / insurance 字段一致性 | Bowen | In Progress | fixture test | - |
+| AI-9 | 接入 Qwen / DeepSeek 可选 provider，必须有 deterministic fallback | Bowen | In Progress | provider fallback test | - |
+| AI-10 | 生成 high-risk scenario：战争 / 严重天气 / 保险缺口导致降价或暂停 | Bowen | In Progress | `npm run scenarios` | - |
+| AI-11 | 建立 RAG 风险情报知识库：项目文档 + mock macro risk feed | Bowen | In Progress | retrieval eval | - |
+| AI-12 | 做 Judge Q&A assistant：解释 AI 定价、非保本、合约动作 | Bowen | In Progress | 彩排通过 | - |
 
 ## 4. Backend / Integration
 
