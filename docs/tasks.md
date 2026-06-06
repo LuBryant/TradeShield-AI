@@ -12,7 +12,7 @@
 | P0 | 跑通 AI 定价主链路 | 出口商选择到账速度，AI 给出 RWA 发行价，投资者看到折价和风险 |
 | P0 | 固定 PricingQuote schema | 让 AI、后端、前端、合约都围绕同一份结构化输出 |
 | P0 | 完成 Investor RWA Offering 页面 | 评委必须看到“风险越高，价格越低，潜在收益越高” |
-| P1 | 合约 mock / 最小 Solidity | RWAOfferingPool + RiskPricingOracle（**WEB3-1~9 Done**；WEB3-10~11 待做） |
+| P1 | 合约 mock / 最小 Solidity | RWAOfferingPool + RiskPricingOracle（WEB3-1~9 Done；WEB3-10~11 待做） |
 | P1 | 多场景回归 | fast / balanced / high-risk repricing |
 | P2 | MCP / RAG / Skill | 作为 Agent 能力加分项，不阻塞主 demo |
 
@@ -105,7 +105,7 @@ Web3 目标：把 AI 定价结果写成链上可验证事件，而不是只在�
 | WEB3-7 | 实现最小 Solidity `RiskPricingOracle` 并 emit `PricingUpdated` | Sage | Done | `hardhat test` | `hardhat/contracts/RiskPricingOracle.sol`，`hardhat test` 6 passing |
 | WEB3-8 | 实现最小 Solidity `RWAOfferingPool` | Sage | Done | `hardhat test` | `hardhat/contracts/RWAOfferingPool.sol`（+ EBLRegistry/RWAToken），`hardhat test` 6 passing |
 | WEB3-9 | 把 `quote_hash` / `evidence_hash` 写入合约事件 | Sage | Done | contract event test | `PricingUpdated` + `OfferingRepriced` 含 evidence/quote hash，`latestQuoteHash/latestEvidenceHash` 持久化，测试已验证 |
-| WEB3-10 | 部署到 Sepolia 或 Base Sepolia 测试网 | Sage | Todo | 部署地址 + tx hash | - |
+| WEB3-10 | 部署到 Sepolia 测试网 | Sage | Todo | 部署地址 + tx hash | - |
 | WEB3-11 | 前端展示合约地址和 PricingUpdated event | Sage | Todo | 手动演示 | - |
 
 ## 7. MCP / RAG / Skill
