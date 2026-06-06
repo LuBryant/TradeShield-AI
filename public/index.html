@@ -1,62 +1,200 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>TradeShield Agent Harness</title>
+    <title>TradeShield · AI Dynamic Pricing for eBL-backed RWA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <main class="container">
+    <!-- ============ Sticky control bar (FE-7 scenario + speed selector) ============ -->
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <span class="brand-mark">◈</span>
+          <div class="brand-text">
+            <strong>TradeShield</strong>
+            <span class="brand-tag">AI dynamically prices eBL-backed RWA</span>
+          </div>
+        </div>
+
+        <div class="controls">
+          <div class="control-group">
+            <label class="control-label">Trade case</label>
+            <div id="scenario-select" class="segmented scenario" role="tablist" aria-label="Trade case"></div>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Exporter payout speed</label>
+            <div id="speed-select" class="segmented speed" role="tablist" aria-label="Payout speed"></div>
+          </div>
+        </div>
+
+        <div class="live-pill" id="live-pill" title="Quotes are produced live by the AI pricing engine">
+          <span class="dot"></span> LIVE
+        </div>
+      </div>
+    </header>
+
+    <main class="page">
+      <!-- ============ Hero + headline price ============ -->
       <section class="hero">
-        <p class="eyebrow">AI Agent × Blockchain / Security & Risk Agent</p>
-        <h1>TradeShield Agent</h1>
-        <p class="subtitle">电子提单 RWA 贸易融资风控协议的黑客松准备 Harness。</p>
-        <button id="run-demo">运行 Mock 主流程</button>
+        <div class="hero-copy">
+          <p class="eyebrow">AI Agent × Blockchain · Trade-Finance Risk &amp; Pricing</p>
+          <h1>The AI prices the deal. The chain enforces it.</h1>
+          <p class="subtitle">
+            An exporter pledges an electronic Bill of Lading. The AI Pricing &amp; Risk Agent reads the
+            cargo, route, documents and live macro risk, then issues a defensible RWA price —
+            <em>higher risk → lower price → higher investor upside</em>. Every number below is produced
+            live by the engine and anchored on-chain by a quote hash.
+          </p>
+          <div id="deal-strip" class="deal-strip"><span class="skeleton-line"></span></div>
+        </div>
+        <div class="hero-price" id="hero-price">
+          <span class="skeleton-block"></span>
+        </div>
       </section>
 
-      <section class="grid">
-        <article>
-          <h2>Exporter Dashboard</h2>
-          <pre id="case-card">Loading...</pre>
-        </article>
-        <article>
-          <h2>AI Risk Agent Report</h2>
-          <pre id="risk-card">点击按钮运行。</pre>
-        </article>
-        <article>
-          <h2>Investor Funding Pool</h2>
-          <p>Mock pool status: permissioned investors deposit USDC after AI approval.</p>
-        </article>
-        <article>
-          <h2>Settlement Timeline</h2>
-          <ol id="timeline"></ol>
-        </article>
+      <!-- ============ FE-5 AI Pricing Console (waterfall) ============ -->
+      <section class="panel" id="console-panel">
+        <div class="panel-head">
+          <h2><span class="seq">1</span> AI Pricing Console</h2>
+          <p class="panel-sub">How the AI builds the issue price: a discount to the $1.00 target redemption value.</p>
+        </div>
+        <div id="waterfall" class="waterfall"></div>
+        <p id="console-explain" class="explain"></p>
       </section>
-      <section class="mcp-section">
-        <h2>MCP Console</h2>
-        <div class="mcp-grid">
-          <div><h3>Tool Invocation</h3>
-            <select id="mcp-tool-select"><option value="">-- Select tool --</option></select>
-            <div id="mcp-params"></div>
-            <button id="mcp-call-btn" disabled>Call Tool</button>
-            <span id="mcp-status"></span>
-            <pre id="mcp-result">Select a tool and click "Call Tool".</pre>
+
+      <!-- ============ FE-1 / FE-2 Exporter Financing Quote ============ -->
+      <section class="panel" id="exporter-panel">
+        <div class="panel-head">
+          <h2><span class="seq">2</span> Exporter Financing Quote</h2>
+          <p class="panel-sub">Pick a payout speed. The AI prices speed as a share of your <em>verified</em> trade profit — faster cash, deeper discount.</p>
+        </div>
+        <div id="speed-cards" class="speed-cards"></div>
+        <p id="exporter-explain" class="explain"></p>
+      </section>
+
+      <!-- ============ FE-3 / FE-4 / FE-8 / FE-10 Investor RWA Offering ============ -->
+      <section class="panel" id="investor-panel">
+        <div class="panel-head">
+          <h2><span class="seq">3</span> Investor RWA Offering</h2>
+          <p class="panel-sub">What a permissioned investor sees: the discounted entry price, the target redemption, and exactly why the price is what it is.</p>
+        </div>
+        <div class="investor-grid">
+          <!-- offer terms + subscribe -->
+          <div class="investor-terms card">
+            <div class="offer-headline">
+              <div class="offer-price">
+                <span class="metric-label">Issue price / token</span>
+                <span id="inv-price" class="offer-price-val">—</span>
+                <span class="metric-foot">vs <strong>$1.00</strong> target redemption (not guaranteed)</span>
+              </div>
+              <div id="inv-yield" class="yield-badge">—</div>
+            </div>
+            <div class="terms-row">
+              <div class="kv"><span>Target redemption</span><strong>$1.00 / token</strong></div>
+              <div class="kv"><span>Token supply</span><strong id="inv-supply">—</strong></div>
+              <div class="kv"><span>Risk level</span><strong id="inv-risk" class="badge">—</strong></div>
+              <div class="kv"><span>AI action</span><strong id="inv-action" class="badge">—</strong></div>
+            </div>
+
+            <!-- FE-8 subscribe mock -->
+            <div class="subscribe">
+              <label class="control-label" for="sub-input">Subscribe (USDC)</label>
+              <div class="subscribe-row">
+                <input id="sub-input" type="number" min="0" step="100000" inputmode="numeric" />
+                <button id="sub-btn" class="btn">Compute RWA</button>
+              </div>
+              <div id="sub-result" class="subscribe-result"></div>
+            </div>
+
+            <!-- FE-10 compliance -->
+            <p class="compliance" id="compliance-note">
+              <strong>Not a capital guarantee.</strong> $1.00 is a <em>target</em> redemption value that depends on
+              importer payment, cargo settlement and insurance coverage. Permissioned investors only.
+            </p>
           </div>
-          <div><h3>Manifest</h3><pre id="mcp-manifest">Loading...</pre></div>
+
+          <!-- FE-4 AI risk factors -->
+          <div class="investor-risk card">
+            <div class="card-head">
+              <h3>Why this price — AI risk factors</h3>
+              <span id="risk-total" class="risk-total">—</span>
+            </div>
+            <div id="risk-dims" class="risk-dims"></div>
+            <div id="intel-cites" class="intel-cites"></div>
+            <p id="investor-explain" class="explain small"></p>
+          </div>
         </div>
       </section>
-      <section class="rag-section">
-        <h2>RAG Risk Intelligence</h2>
-        <div class="rag-grid">
-          <div><h3>Search</h3>
-            <div class="search-bar"><input id="rag-query" placeholder='"Red Sea", "copper price", "monsoon"...' /><select id="rag-category"><option value="">All</option></select><button id="rag-search-btn">Search</button></div>
-            <div id="rag-results"></div>
+
+      <!-- ============ FE-6 Smart Contract Lifecycle ============ -->
+      <section class="panel" id="timeline-panel">
+        <div class="panel-head">
+          <h2><span class="seq">4</span> Smart-Contract Lifecycle</h2>
+          <p class="panel-sub">The RWAOfferingPool + RiskPricingOracle drive the offering through its on-chain states.</p>
+          <div class="timeline-actions">
+            <button id="risk-inject-btn" class="btn ghost">▶ Simulate in-transit risk event</button>
+            <button id="risk-reset-btn" class="btn ghost subtle" hidden>↺ Reset</button>
           </div>
-          <div><h3>Judge Q&A</h3><div id="judge-qa">Loading...</div></div>
+        </div>
+        <div id="lifecycle" class="lifecycle"></div>
+        <ol id="timeline" class="timeline"></ol>
+      </section>
+
+      <!-- ============ FE-9 / WEB3 On-chain anchoring ============ -->
+      <section class="panel" id="oracle-panel">
+        <div class="panel-head">
+          <h2><span class="seq">5</span> On-chain Anchoring · RiskPricingOracle</h2>
+          <p class="panel-sub">The AI decision is hashed and written on-chain — auditable, tamper-evident, machine-verifiable.</p>
+        </div>
+        <div class="oracle-grid">
+          <div class="card hash-card">
+            <div class="hash-row"><span>quote_hash</span><code id="quote-hash" class="hash">—</code></div>
+            <div class="hash-row"><span>evidence_hash</span><code id="evidence-hash" class="hash">—</code></div>
+            <div class="hash-row"><span>offering_state</span><strong id="oracle-state" class="badge">—</strong></div>
+            <button id="oracle-push-btn" class="btn">⛓ Push to RiskPricingOracle</button>
+          </div>
+          <div class="card">
+            <h3 class="card-head-line">updatePricing(...) call</h3>
+            <pre id="oracle-payload" class="code-block">—</pre>
+          </div>
+          <div class="card" id="tx-card" hidden>
+            <h3 class="card-head-line">PricingUpdated event</h3>
+            <pre id="tx-result" class="code-block">—</pre>
+          </div>
         </div>
       </section>
+
+      <!-- ============ RAG intel + Judge Q&A (AI-11 / RAG) ============ -->
+      <section class="panel" id="intel-panel">
+        <div class="panel-head">
+          <h2><span class="seq">6</span> AI Risk Intelligence &amp; Judge Q&amp;A</h2>
+          <p class="panel-sub">The same RAG knowledge base the agent cites when it widens a risk discount.</p>
+        </div>
+        <div class="intel-grid">
+          <div class="card">
+            <div class="search-bar">
+              <input id="rag-query" placeholder='"Strait of Hormuz", "copper volatility", "Yangshan port"…' />
+              <button id="rag-search-btn" class="btn">Search</button>
+            </div>
+            <div id="rag-results" class="rag-results"></div>
+          </div>
+          <div class="card">
+            <h3 class="card-head-line">Judge Q&amp;A</h3>
+            <div id="judge-qa" class="judge-qa">Loading…</div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="page-foot">
+        <span>TradeShield Agent · ETHBeijing 2026 hackathon harness</span>
+        <span class="muted">All numbers produced live by the local AI pricing engine · cargo valuation, risk scoring and hashes are deterministic and offline-reproducible.</span>
+      </footer>
     </main>
-    <script src="/app.js"></script>
+
+    <div id="toast" class="toast" hidden></div>
+    <script type="module" src="/app.js"></script>
   </body>
 </html>

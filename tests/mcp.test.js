@@ -106,7 +106,15 @@ test('generate_pricing_quote: returns full PricingQuote for demo case', async ()
   assert.ok(q.max_safe_redemption_exposure_usd > 0);
   assert.ok(q.recommended_token_supply > 0);
   assert.ok(q.requested_cash_usd > 0);
-  assert.equal(q.base_issue_price_usd, 1.0);
+  // Bowen's model: the base issue price is the patient-money ANCHOR — itself a
+  // discount to the 1.00 target (LOW_COST gives up ~20% of verified profit), not
+  // a flat 1.00. Urgency + risk discounts then subtract from it to the indicative
+  // price (the additive decomposition the PricingQuote schema enforces).
+  assert.ok(q.base_issue_price_usd > 0 && q.base_issue_price_usd < 1,
+    `base_issue_price_usd should be a discount anchor in (0,1), got ${q.base_issue_price_usd}`);
+  const reconstructed = q.base_issue_price_usd - q.urgency_discount_bps / 10000 - q.risk_discount_bps / 10000;
+  assert.ok(Math.abs(reconstructed - q.indicative_issue_price_usd) < 0.001,
+    'base − urgency − risk discounts must reconstruct the indicative issue price');
   assert.ok(q.risk_discount_bps >= 0, 'risk_discount_bps must be >= 0');
   assert.ok(q.final_issue_price_usd >= 0.35, 'final_issue_price_usd must be >= 0.35');
   assert.ok(q.final_issue_price_usd <= 1.0, 'final_issue_price_usd must be <= 1.0');
