@@ -110,6 +110,84 @@ export function createServer() {
         return;
       }
 
+      // ========================
+      // MCP / RAG / Skill Endpoints
+      // ========================
+
+      // MCP-1: Return tools manifest
+      if (request.method === 'GET' && url.pathname === '/api/mcp/tools') {
+        const { MCP_TOOLS_MANIFEST } = await import('../mcp/mcpServer.js');
+        sendJson(response, 200, { ok: true, protocol: 'tradeshield-mcp-v1', tools: MCP_TOOLS_MANIFEST });
+        return;
+      }
+
+      // MCP-2~5: Universal tool call dispatcher
+      if (request.method === 'POST' && url.pathname === '/api/mcp/call') {
+        const body = await readJsonBody(request);
+        if (!body || !body.tool) {
+          sendJson(response, 400, { ok: false, error: 'Missing "tool" in request body. Available tools: GET /api/mcp/tools' });
+          return;
+        }
+        try {
+          const { callTool } = await import('../mcp/mcpServer.js');
+          const result = await callTool(body.tool, body.params ?? {});
+          sendJson(response, 200, { ok: true, ...result });
+        } catch (error) {
+          sendJson(response, 400, { ok: false, error: error.message, tool: body.tool });
+        }
+        return;
+      }
+
+      // RAG: Search knowledge base
+      if (request.method === 'POST' && url.pathname === '/api/rag/search') {
+        const body = await readJsonBody(request);
+        if (!body || !body.query) {
+          sendJson(response, 400, { ok: false, error: 'Missing "query" in request body' });
+          return;
+        }
+        const { searchKnowledgeBase } = await import('../rag/search.js');
+        const results = searchKnowledgeBase(body.query, {
+          categories: body.categories,
+          limit: body.limit || 10
+        });
+        sendJson(response, 200, { ok: true, query: body.query, matches: results, match_count: results.length });
+        return;
+      }
+
+      // RAG-2: Return Judge Q&A pairs
+      if (request.method === 'GET' && url.pathname === '/api/rag/judge-qa') {
+        const { JUDGE_QA_PAIRS } = await import('../rag/judgeQA.js');
+        sendJson(response, 200, { ok: true, pairs: JUDGE_QA_PAIRS });
+        return;
+      }
+
+      // RAG: Full risk sweep for a case
+      if (request.method === 'POST' && url.pathname === '/api/rag/risk-sweep') {
+        const body = await readJsonBody(request);
+        const caseData = body ?? await loadDemoCase();
+        const { fullRiskSweep } = await import('../rag/search.js');
+        sendJson(response, 200, { ok: true, ...fullRiskSweep(caseData) });
+        return;
+      }
+
+      // SKILL-1: Run pricing analyst
+      if (request.method === 'POST' && url.pathname === '/api/skill/pricing-analyst') {
+        const body = await readJsonBody(request);
+        const { runPricingAnalyst } = await import('../skill/pricingAnalyst.js');
+        const result = await runPricingAnalyst(body ?? { case_id: 'CASE-EBL-2026-0001' });
+        sendJson(response, 200, { ok: true, ...result });
+        return;
+      }
+
+      // SKILL-2: Run demo operator
+      if (request.method === 'POST' && url.pathname === '/api/skill/demo-operator') {
+        const body = await readJsonBody(request);
+        const { runDemoOperator } = await import('../skill/demoOperator.js');
+        const result = await runDemoOperator(body ?? { case_id: 'CASE-EBL-2026-0001' });
+        sendJson(response, 200, { ok: true, ...result });
+        return;
+      }
+
       if (request.method === 'GET') {
         await serveStatic(url.pathname, response);
         return;
@@ -122,7 +200,11 @@ export function createServer() {
   });
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+const isEntryPoint = process.argv[1]
+  ? import.meta.url === pathToFileURL(process.argv[1]).href
+  : false;
+
+if (isEntryPoint) {
   const port = Number(process.env.PORT ?? 3000);
   createServer().listen(port, () => {
     console.log(`TradeShield Agent harness running at http://localhost:${port}`);

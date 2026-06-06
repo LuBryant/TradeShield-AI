@@ -1,4 +1,4 @@
-.PHONY: install dev test check demo smoke scenarios
+.PHONY: install dev test check demo smoke scenarios mcp
 
 install:
 	npm install
@@ -20,3 +20,6 @@ smoke:
 
 scenarios:
 	npm run scenarios
+
+mcp:
+	npm run mcp
