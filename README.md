@@ -1,6 +1,6 @@
-# TradeShield Agent Starter
+# TradeShield Agent
 
-> AI Agent x Blockchain 黑客松准备仓库：电子提单 RWA 贸易融资风控协议的文档、Mock Harness、测试框架和团队协作规范。
+> AI Agent x Blockchain 黑客松仓库：**AI 动态定价的 eBL-backed RWA 折价发行协议**的文档、Mock Harness、测试框架和团队协作规范。
 
 这份 README 是给所有项目成员看的，尤其照顾第一次参加黑客松、第一次用 Node.js、第一次提 PR 的同学。你不需要一开始就懂完 Web3、国际贸易或后端测试，只要按下面步骤做，就能把项目跑起来、领任务、开发、验证、提交 PR。
 
@@ -8,21 +8,23 @@
 
 ## 0. 先读这一段：这个项目到底是什么
 
-TradeShield Agent 是一个面向黑客松的 **AI Risk Agent x eBL-backed Trade Finance** 项目准备仓库。
+TradeShield Agent 是一个面向黑客松的 **AI Dynamic Pricing x eBL-backed RWA Trade Finance** 仓库。
 
 项目一句话：
 
-> 出口商将电子提单质押到智能合约，AI Risk Agent 审单、估值并监控运输风险，把链下贸易风险转化为链上可执行的风控信号，帮助合格投资者更安全地为中小出口商提供贸易融资。
+> 出口商把电子提单质押到智能合约，系统以货值为支撑发行 RWA；AI Pricing & Risk Agent 根据到账速度和贸易风险，动态给出 RWA 的折价发行价、可融资额度和风控动作，投资者在认购前就看到价格、目标兑付价和风险来源。
 
 更白话一点：
 
 ```text
 国际贸易里，货已经装船，但钱还没回来。
-出口商需要提前融资。
-电子提单代表货物权利。
-我们用 AI 分析这张提单和货物运输风险。
-再用智能合约模拟融资、预警、冻结、清算这些动作。
+出口商想提前、快速拿到现金。
+电子提单代表货物权利，可以质押。
+我们用 AI 给这批货估值，再把"想多快拿钱 + 有多少风险"折算成一个发行折价（比如 1 RWA 卖 0.85）。
+投资者按折价认购，AI 在运输途中根据风险改价、暂停或清算。
 ```
+
+> ⚠️ 模型升级提示：早期版本是"RiskReport 风控 + 资金池放贷"；当前主线是 **AI 动态定价的 RWA 折价发行**（见 `docs/PRD.md` v0.2 + `docs/tasks.md`）。**代码仍在迁移中**：`riskEngine.js` 目前输出旧版 `RiskReport`（contract_action），升级为 `PricingQuote`（pricing_action）是 `tasks.md` 的 AI-1 / BE-2 / BE-3。本 README 已标注哪些是"现状（Current）"、哪些是"目标（Target）"。
 
 本仓库现在不是最终 Demo，而是一个 **准备仓库 + 可运行 Harness**。它的目标是让大家在正式开发前有统一背景、统一 PRD、统一数据、统一命令、统一验证方式。
 
@@ -76,14 +78,18 @@ data/demo-case.json
 
 | 文件 | 它是什么 | 小白理解 |
 |---|---|---|
-| `data/demo-case.json` | Demo 输入数据 | 假设的一笔铜阴极板国际贸易融资案例 |
-| `src/core/riskEngine.js` | 风险引擎 | 根据货物、保险、价格、运输事件算风险报告 |
-| `src/core/workflow.js` | 流程模拟器 | 模拟链上状态机如何从融资走到预警或清算 |
+| `data/demo-case.json` | Demo 输入数据（legacy） | 一笔铜阴极板国际贸易案例，喂给旧风险引擎 |
+| `data/uploads/` | 拟真上传单据 | 模拟用户上传的 eBL + 商业发票（新加坡铜 / 原油），见其 README |
+| `data/cases/` | 结构化 case（新模型） | 对齐 PricingQuote 字段的案例 JSON |
+| `src/core/riskEngine.js` | 定价/风险引擎 | 现状：算 RiskReport（旧）。目标：升级为输出 RWA 折价的 PricingQuote |
+| `src/core/workflow.js` | 流程模拟器 | 模拟链上状态机（现状 Created→Funding→…，目标 Created→Priced→Open→…） |
+| `src/agent/` | AI 估值 tool calling | LLM 调用「实时铜价 / 历史同类成交价 / 估值」工具，见 `docs/ai-valuation-tooling.md` |
 | `src/app/server.js` | 最小 Web/API 服务 | 提供网页和 API，让前端或测试能访问数据 |
-| `scripts/check.mjs` | 自检脚本 | 检查文件、脚本、seed 数据、风险引擎是否还正常 |
+| `scripts/check.mjs` | 自检脚本 | 检查文件、脚本、seed 数据、引擎是否还正常 |
 | `scripts/demo.mjs` | CLI Demo | 在终端打印完整演示流程 |
 | `scripts/smoke.mjs` | 冒烟测试 | 启动一个临时 API server，检查关键 API 是否可用 |
-| `tests/*.test.js` | 自动测试 | 验证风险引擎和主流程没有被改坏 |
+| `scripts/agent-valuation.mjs` | 估值 CLI | 跑 AI 估值工具，离线有 deterministic fallback |
+| `tests/*.test.js` | 自动测试 | 验证引擎和主流程没有被改坏 |
 | `public/*` | 前端页面 | 浏览器看到的页面 |
 
 ### 1.4 Harness 不是什么
@@ -572,6 +578,8 @@ scripts/*
 ### 6.1 为什么先改 Demo 数据
 
 对小白最友好的练习方式是先改 `data/demo-case.json`，因为不用理解很多代码，也能看到风险结果的变化。
+
+> 这一节改的是 **legacy** seed（旧 RiskReport 引擎）。新模型的拟真数据在 `data/uploads/`（eBL + 商业发票）和 `data/cases/`（结构化 case），字段对齐 PricingQuote，见 `data/uploads/README.md`。
 
 ### 6.2 可以改哪些字段
 
@@ -1440,8 +1448,8 @@ docs/background.md
 常见任务：
 
 - 设计 EBLRegistry 接口；
-- 设计 TradeFinancePool 接口；
-- 设计 RiskOracle 接口；
+- 设计 RWAOfferingPool 接口（createOffering / subscribe / reprice / pause / settle）；
+- 设计 RiskPricingOracle 接口（updatePricing + PricingUpdated 事件）；
 - 做 JS contract mock；
 - 可选实现最小 Solidity 合约。
 
@@ -1517,7 +1525,9 @@ npm run demo
 
 ---
 
-## 18. 当前 Demo 流程
+## 18. Demo 流程
+
+### 18.1 当前（legacy）CLI demo
 
 命令：
 
@@ -1525,18 +1535,15 @@ npm run demo
 npm run demo
 ```
 
-会展示类似流程：
+当前 `npm run demo` 跑的还是旧 RiskReport 引擎，展示：
 
 ```text
-Created
-→ Funding
-→ Funded
-→ InTransit
+Created → Funding → Funded → InTransit
 → AI Risk Agent analyzes cargo / market / insurance events
 → Warning / Frozen / Liquidation
 ```
 
-当前 seed case：
+当前 seed case（`data/demo-case.json`）：
 
 ```text
 Shanghai Metals Export Co. → Hamburg Industrial GmbH
@@ -1545,14 +1552,26 @@ Financing: 5,600,000 USDC
 Risk events: bad weather, delay, insurance expiry risk, copper price drop
 ```
 
+### 18.2 目标（Target）定价 demo
+
+新模型的 demo 用 `data/uploads/` 的拟真数据（新加坡 → 上海铜阴极板 500 吨）：
+
+```text
+出口商上传 eBL + 商业发票
+→ AI 调用工具：实时 LME 铜价 + 历史同类成交价 + 估值（npm run agent:value）
+→ AI 输出 PricingQuote：发行价 ≈ 0.80（FAST 到账，让出约 60% 盈利）
+→ Created → Priced → Open（投资者按 ≈ 0.80 认购）
+→ 霍尔木兹战争升级 + 铜价剧烈波动 → AI 把价压到 ≈ 0.76
+→ Repriced / Paused，RiskPricingOracle 记录新价 + 证据哈希
+```
+
 评委应该看到：
 
 ```text
-AI 发现链下贸易风险
-→ 生成结构化 RiskReport
-→ contract_action 变化
-→ workflow 状态变化
-→ 前端或 CLI 展示风险原因
+AI 调用工具拉了真实价格和历史成交价
+→ 把"速度 + 风险"折算成发行价（≈ 0.80 → ≈ 0.76）
+→ pricing_action / offering 状态变化
+→ 前端或 CLI 展示价格、目标兑付价、风险来源、证据哈希
 ```
 
 ---
@@ -1561,12 +1580,24 @@ AI 发现链下贸易风险
 
 当前 API 是 Mock 版本，后续可以替换为真实 AI Agent、合约、Oracle 或 RAG 服务。
 
+当前已实现（Current）：
+
 | Method | Path | 用途 |
 |---|---|---|
 | GET | `/api/health` | Harness 健康检查 |
-| GET | `/api/demo-data` | 返回 seed 电子提单融资案例 |
-| POST | `/api/risk/analyze` | 返回结构化 AI 风险报告 |
+| GET | `/api/demo-data` | 返回 seed 电子提单案例 |
+| POST | `/api/risk/analyze` | 返回结构化 AI 风险报告（旧 RiskReport） |
 | POST | `/api/workflow/simulate` | 模拟主流程状态机 |
+| GET | `/api/scenarios` | 返回多场景回归摘要 |
+| POST | `/api/scenarios/run` | 跑单个场景 |
+
+目标新增（Target，见 PRD §9）：
+
+| Method | Path | 用途 |
+|---|---|---|
+| POST | `/api/pricing/quote` | 生成 AI PricingQuote（折价 + 额度 + 动作） |
+| POST | `/api/offering/simulate` | 模拟发行、认购、改价、暂停、结算 |
+| POST | `/api/agent/value-cargo` | 估值 + 历史同类成交价（tool calling） |
 
 POST API 的 body 可以为空。为空时会自动读取：
 
@@ -1585,12 +1616,20 @@ data/demo-case.json
 ├── package.json
 ├── .env.example
 ├── data/
-│   └── demo-case.json
+│   ├── demo-case.json          # legacy seed (RiskReport 引擎)
+│   ├── scenarios/              # 多场景回归 fixtures
+│   ├── uploads/               # 拟真上传单据：eBL + 商业发票（新加坡铜 / 原油）
+│   │   ├── README.md
+│   │   ├── copper-sg-shanghai/
+│   │   └── crude-sg-ulsan/
+│   └── cases/                 # 结构化 case（对齐新模型 PricingQuote 字段）
 ├── docs/
 │   ├── background.md
 │   ├── PRD.md
+│   ├── tasks.md
 │   ├── acceptance.md
-│   └── tasks.md
+│   ├── award-roadmap.md
+│   └── ai-valuation-tooling.md # AI 估值 tool calling + 所需 API
 ├── public/
 │   ├── index.html
 │   ├── app.js
@@ -1599,15 +1638,24 @@ data/demo-case.json
 │   ├── check.mjs
 │   ├── demo.mjs
 │   ├── install.mjs
-│   └── smoke.mjs
+│   ├── smoke.mjs
+│   ├── scenarios.mjs
+│   └── agent-valuation.mjs    # 跑 AI 估值工具（离线有 fallback）
 ├── src/
 │   ├── app/
 │   │   └── server.js
-│   └── core/
-│       ├── riskEngine.js
-│       └── workflow.js
+│   ├── core/
+│   │   ├── riskEngine.js
+│   │   ├── workflow.js
+│   │   ├── schema.js
+│   │   └── scenarioRunner.js
+│   └── agent/                 # AI 估值 tool calling
+│       ├── llm/openaiCompatClient.js
+│       ├── tools/copperValuationTools.js
+│       └── valuationAgent.js
 └── tests/
     ├── riskEngine.test.js
+    ├── scenarioRunner.test.js
     └── smoke.test.js
 ```
 
@@ -1718,14 +1766,18 @@ npm run demo
 npm run scenarios
 ```
 
-它会读取：
+它会跑两套引擎的回归：
 
 ```text
-data/demo-case.json
-data/scenarios/*.json
+1. legacy RiskReport 谐波：data/demo-case.json + data/scenarios/*.json
+   （低风险批准、预警保证金、严重风险清算）
+2. AI 动态定价场景：data/pricing-scenarios/*.json
+   （fast / balanced 正常开盘、high-risk 途中降价 reprice、high-risk 暂停 pause）
 ```
 
-并验证低风险批准、预警保证金、严重风险清算等核心路径。以后新增 AI、MCP、RAG、合约或前端功能时，至少要说明它影响哪个 scenario，并跑：
+第 2 套直接驱动 AI 定价引擎（risk discount = AI-4，high-risk pause/reprice = AI-10），
+所以 `npm run scenarios` 是这两个 AI 任务的验证命令。以后新增 AI、MCP、RAG、合约或前端功能时，
+至少要说明它影响哪个 scenario，并跑：
 
 ```bash
 npm run check
@@ -1733,3 +1785,18 @@ npm run test
 npm run smoke
 npm run scenarios
 ```
+
+## 26. 新增：Judge Q&A assistant（AI-12）
+
+彩排时用来回答评委追问的接地气问答助手（默认离线、确定性，可选 LLM 润色并自动兜底）：
+
+```bash
+npm run qa                          # 跑完整评委彩排问答（6 个标准问题）
+npm run qa -- "why discount to 0.80?"   # 回答单个自由问题
+npm run qa -- --llm "is it guaranteed?"  # 让已配置的 LLM 润色（出错自动回退到确定性答案）
+```
+
+每个回答都用**真实定价引擎数字**（`compareSpeeds` / `quoteFromCase`）和**检索到的风险情报引用**
+（`src/agent/riskIntel.js`）拼出，所以助手永远不会和定价引擎自相矛盾，也始终保留
+"target redemption 不是保本" 的合规口径。实现见 `src/agent/judgeAssistant.js`。
+
