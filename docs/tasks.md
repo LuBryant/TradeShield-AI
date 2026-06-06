@@ -34,18 +34,18 @@ AI 的目标不是“写一段解释”，而是产出可被后端、前端和�
 
 | ID | Task | Owner | Status | Verification | Done Evidence |
 |---|---|---|---|---|---|
-| AI-1 | 固定 `PricingQuote` JSON schema | Bowen | Processing | `npm run test` | - |
-| AI-2 | 实现 base issue price：根据 `payout_speed` 输出 0.80 / 0.86 / 0.90 等基础价格 | Unassigned | Todo | pricing unit test | - |
-| AI-3 | 实现 urgency discount：出口商越急，发行价越低 | Unassigned | Todo | scenario test | - |
-| AI-4 | 实现 risk discount：天气、战争、港口、保险、价格波动影响发行价 | Unassigned | Todo | `npm run scenarios` | - |
-| AI-5 | 实现 collateral coverage guardrail：防止 100 万货物发行过高目标兑付敞口 | Unassigned | Todo | pricing invariant test | - |
-| AI-6 | 实现 investor explanation generator：解释为什么价格是 0.80 / 0.90 | Unassigned | Todo | `npm run demo` 输出包含 explanation | - |
-| AI-7 | 实现 evidence graph mock：列出每个折扣对应的证据 | Unassigned | Todo | schema test | - |
-| AI-8 | 实现 document consistency checker：eBL / invoice / insurance 字段一致性 | Unassigned | Todo | fixture test | - |
-| AI-9 | 接入 Qwen / DeepSeek 可选 provider，必须有 deterministic fallback | Unassigned | Todo | provider fallback test | - |
-| AI-10 | 生成 high-risk scenario：战争 / 严重天气 / 保险缺口导致降价或暂停 | Unassigned | Todo | `npm run scenarios` | - |
-| AI-11 | 建立 RAG 风险情报知识库：项目文档 + mock macro risk feed | Unassigned | Todo | retrieval eval | - |
-| AI-12 | 做 Judge Q&A assistant：解释 AI 定价、非保本、合约动作 | Unassigned | Todo | 彩排通过 | - |
+| AI-1 | 固定 `PricingQuote` JSON schema | Bowen | Done | `npm run test` | src/core/pricingSchema.js `assertPricingQuote`（3 条不变量）+ tests/pricingEngine.test.js AI-1 |
+| AI-2 | 实现 base issue price：根据 `payout_speed` 输出按速度单调的基础价格（铜参考案例 ≈0.80 / 0.85 / 0.89） | Bowen | Done | pricing unit test | src/core/pricingEngine.js `priceRwaOffering`（BASE_PROFIT_SHARE）；tests/pricingEngine.test.js AI-2 |
+| AI-3 | 实现 urgency discount：出口商越急，发行价越低 | Bowen | Done | scenario test | pricingEngine urgency_discount_bps（LOW_COST 锚点）；tests/pricingEngine.test.js AI-3 |
+| AI-4 | 实现 risk discount：天气、战争、港口、保险、价格波动影响发行价 | Bowen | Done | `npm run scenarios` | pricingEngine `scoreRisk`（macro war/weather/port/fx + shipment + 价格回落 + 单据折价）；接入 scripts/scenarios.mjs 的 4 个 pricing scenarios + tests/pricingScenarioRunner.test.js |
+| AI-5 | 实现 collateral coverage guardrail：防止 100 万货物发行过高目标兑付敞口 | Bowen | Done | pricing invariant test | pricingEngine 抵押价格地板 + assertPricingQuote `redemption_exposure ≤ max_safe`；tests/pricingEngine.test.js AI-5 |
+| AI-6 | 实现 investor explanation generator：解释为什么价格是 0.80 / 0.90 | Bowen | Done | `npm run demo` 输出包含 explanation | pricingEngine investor_explanation / exporter_explanation；scripts/demo.mjs 与 price.mjs 已打印 |
+| AI-7 | 实现 evidence graph mock：列出每个折扣对应的证据 | Bowen | Done | schema test | pricingEngine `buildEvidenceGraph`（base/urgency/risk/collateral 节点+证据）；tests/pricingEngine.test.js AI-7 + assertPricingQuote evidence_graph 校验 |
+| AI-8 | 实现 document consistency checker：eBL / invoice / insurance 字段一致性 | Bowen | Done | fixture test | src/agent/documentConsistency.js（数量/货值/单价vs市场/Incoterms/保险覆盖&到期/HS）；tests/documentConsistency.test.js；折价接入 scoreRisk |
+| AI-9 | 接入 Qwen / DeepSeek 可选 provider，必须有 deterministic fallback | Bowen | Done | provider fallback test | src/agent/llm/openaiCompatClient.js（DeepSeek/Qwen/OpenAI/custom）+ valuationAgent deterministic fallback；tests/valuationAgent.test.js（AI-9 LLM error→fallback / resolveProvider） |
+| AI-10 | 生成 high-risk scenario：战争 / 严重天气 / 保险缺口导致降价或暂停 | Bowen | Done | `npm run scenarios` | data/cases/copper-sg-shanghai-warcrisis.case.json + data/pricing-scenarios/03-high-risk-reprice、04-high-risk-pause；tests/pricingScenarioRunner.test.js（Repriced→Redeemed / CRITICAL→PAUSE） |
+| AI-11 | 建立 RAG 风险情报知识库：项目文档 + mock macro risk feed | Bowen | Done | retrieval eval | src/agent/riskIntel.js + data/risk-intel/feed.json（10 docs）；tests/riskIntel.test.js（evaluateRetrieval precision@k ≥ 0.8） |
+| AI-12 | 做 Judge Q&A assistant：解释 AI 定价、非保本、合约动作 | Bowen | Done | 彩排通过（`npm run qa`） | src/agent/judgeAssistant.js（6 个 grounded intents + RAG 引用 + 实时报价数字 + LLM polish/fallback）；scripts/judge-qa.mjs；tests/judgeAssistant.test.js |
 
 ## 4. Backend / Integration
 
@@ -204,3 +204,4 @@ PM-3 3-minute demo script
 ```
 
 这 8 个完成，项目就能讲清楚“AI 如何定价 RWA”。合约和 MCP/RAG 可以作为加分项继续堆。
+

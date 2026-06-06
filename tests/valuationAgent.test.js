@@ -52,3 +52,33 @@ test('resolveProvider selects by env key and returns null when none set', () => 
   assert.equal(resolveProvider({ LLM_BASE_URL: 'https://h/v1', LLM_API_KEY: 'x' }).provider, 'custom');
   assert.equal(resolveProvider({}), null);
 });
+
+test('AI-9: a configured LLM that errors falls back to the deterministic valuation', async () => {
+  // env has a provider key, so the agent takes the LLM path; the injected chat
+  // throws, exercising the deterministic fallback with no network call.
+  const failingChat = async () => {
+    throw new Error('provider 500: upstream timeout');
+  };
+  const report = await runValuationAgent(copperCase, {
+    env: { DEEPSEEK_API_KEY: 'test-key' },
+    chat: failingChat
+  });
+
+  assert.equal(report.provider, 'deterministic-fallback');
+  assert.match(report.ai_explanation, /LLM error/);
+  assert.ok(report.valuation.ai_verified_collateral_value_usd > 0);
+  assert.equal(report.tool_trace.length, 4); // all four tools ran deterministically
+});
+
+test('AI-9: a working injected LLM drives the tool loop and reports its provider', async () => {
+  // Minimal fake model: no tool calls, just returns a final explanation. The
+  // agent then backfills the valuation deterministically (no network).
+  const fakeChat = async () => ({ role: 'assistant', content: 'Verified collateral looks conservative.' });
+  const report = await runValuationAgent(copperCase, {
+    env: { DEEPSEEK_API_KEY: 'test-key' },
+    chat: fakeChat
+  });
+
+  assert.equal(report.provider, 'deepseek');
+  assert.ok(report.valuation.ai_verified_collateral_value_usd > 0);
+});

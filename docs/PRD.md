@@ -28,13 +28,16 @@ RWA 目标到期兑付价：1 RWA = 1 USD target redemption value
 
 ### 2.2 为什么折价发行
 
-出口商想越快拿钱，就必须给投资者更高折扣：
+RWA 的目标到期兑付价固定为 **1.00 USD（target redemption value）**。出口商想越快拿钱，就必须以更低的发行价把 RWA 卖给投资者，也就是给投资者更高折扣。下表是**参考案例（铜 SG→上海，见 §2.4）下的示例**，不是固定价格——真正的发行价由 §2.4 的 AI 定价模型动态算出：
 
 | 出口商诉求 | 示例发行价 | 投资者潜在收益 | 解释 |
 |---|---:|---:|---|
-| 很快到账 | 0.80 USD / RWA | 最高 25% gross upside to 1 USD target | 出口商牺牲更多折扣换速度 |
-| 正常到账 | 0.90 USD / RWA | 最高 11.1% gross upside to 1 USD target | 折扣较低，融资成本较低 |
+| 很快到账 (FAST) | ≈ 0.80 USD / RWA | 最高 ≈ 25% gross upside to 1 USD target | 出口商牺牲更多盈利换速度 |
+| 均衡 (BALANCED) | ≈ 0.85 USD / RWA | 最高 ≈ 18% gross upside to 1 USD target | 速度与融资成本折中 |
+| 正常到账 (LOW_COST) | ≈ 0.89 USD / RWA | 最高 ≈ 12.5% gross upside to 1 USD target | 折扣较低，融资成本较低 |
 | 风险升高 | AI 进一步压低价格或暂停发行 | 收益看似更高，但风险也更高 | 风险折扣由 AI 解释 |
+
+> 关键原则：发行价是一个**区间** 0.80 ~ 0.90，逼近但永不等于 1.00 目标兑付价。0.80 不是写死的“快速价”，而是“在这个案例的盈利和风险下，FAST 算出来约等于 0.80”。
 
 ### 2.3 重要定价规则
 
@@ -64,6 +67,56 @@ target_redemption_exposure <= AI_verified_collateral_value * redemption_coverage
 | 真正到账 900,000 | 1,125,000 RWA | 0.80 | 900,000 USD | 1,125,000 USD | 对 100 万货值通常过高，应拒绝或降额 |
 
 这就是 AI 定价真正有价值的地方：它不是只算风险分，而是决定 **当前风险下，出口商最多能融多少钱、投资者应以什么折扣买、合约是否应该暂停发行**。
+
+### 2.4 AI 定价的核心：用出口商盈利决定折价（合理的比例）
+
+发行价不能拍脑袋，也不能只看风险。本协议的核心创新是：**折价（投资者赚到的钱）本质上就是出口商的融资成本，而这个成本从出口商的“贸易盈利”里出。** 我们把发行价表达成“出口商让出多少比例的盈利”——这就是“合理的比例”。
+
+**第一步：算出口商的可验证盈利 P**
+
+```text
+gross_profit P = invoice_value - cost_of_goods      # 发票货值 - 拿货成本
+```
+
+例：铜案例出口商在霍尔木兹战争溢价之前以 ~USD 11,000/MT 拿货（COGS 5,500,000），现在 CIF 上海发票价 USD 13,750/MT（货值 6,875,000），所以 **P = 1,375,000（毛利 20%）**。战争溢价就是这批货的嵌入式利润。
+
+**第二步：到账速度决定“让出多少比例盈利”（base share）**
+
+| 到账速度 | 让出盈利比例 base share | 含义 |
+|---|---:|---|
+| 很快到账 FAST | 50% | 牺牲一半盈利换最快现金 |
+| 均衡 BALANCED | 33% | 速度与成本折中 |
+| 正常到账 LOW_COST | 20% | 只让出小部分盈利，融资最便宜 |
+
+**第三步：风险加码（risk share）**。战争、价格波动、港口、保险、单据等风险会让投资者要求更高补偿，于是在 base share 上再加一块（约每 350bps 风险 = 多让 10% 盈利，上限 +30%）。
+
+**第四步：由“让出的盈利份额”反推发行价**
+
+```text
+share          = base_share(speed) + risk_share          # 合理的比例
+financing_cost = share × P
+issue_price    = cash / (cash + financing_cost)          # = cash / (cash + share × P)
+```
+
+**第五步：两道护栏（综合考虑）**
+
+```text
+抵押覆盖护栏(AI-5): redemption_exposure ≤ AI_verified_collateral × coverage_limit
+                   → 等价于价格地板 issue_price ≥ cash / max_safe_redemption（只会抬价）
+盈利护栏           : share 一旦 > 85%，融资几乎吃光利润 → AI 暂停发行(PAUSE_OFFERING)
+```
+
+**铜参考案例实跑（cash = 3,300,000，P = 1,375,000，风险 MEDIUM 350bps → risk share 10%）：**
+
+| 速度 | 让出盈利 share | 发行价 | 出口商到账 | 融资成本 | 占盈利 | 投资者潜在收益 | 动作 |
+|---|---:|---:|---:|---:|---:|---:|---|
+| FAST | 60% | **0.80** | 3,300,000 | 825,000 | 60% | 25.0% | OPEN |
+| BALANCED | 43% | **0.85** | 3,300,000 | 591,250 | 43% | 17.9% | OPEN |
+| LOW_COST | 30% | **0.89** | 3,300,000 | 412,500 | 30% | 12.5% | OPEN |
+
+一句话：**“很快到账”让出约 60% 盈利（投资者 25% 上行），“正常到账”只让出约 30% 盈利（投资者 12.5% 上行）。** 风险升高会进一步压低发行价，抵押覆盖不足会抬高价格地板或暂停发行。1.00 是目标兑付价，不是保本。
+
+> 实现见 `src/core/pricingEngine.js`（`priceRwaOffering` / `quoteFromCase` / `compareSpeeds`），Python 参考规范见 `scripts/pricing_model.py`，命令 `npm run price` / `npm run demo`。
 
 ## 3. 目标用户
 
@@ -116,12 +169,12 @@ RWA 目标到期兑付价：1 USD / RWA
 
 ### 5.2 出口商选择到账速度
 
-出口商在页面选择：
+出口商在页面选择（发行价由 §2.4 的 AI 定价模型算出，下为铜参考案例的结果）：
 
 ```text
-Fast payout：AI 建议发行价 0.80，融资成本更高，到账更快
-Balanced payout：AI 建议发行价 0.86，速度和融资成本折中
-Low-cost payout：AI 建议发行价 0.90，融资成本更低，但可能认购更慢
+Fast payout    ：AI 算出发行价 ≈ 0.80，让出约 60% 盈利，融资成本更高，到账最快
+Balanced payout：AI 算出发行价 ≈ 0.85，让出约 43% 盈利，速度和融资成本折中
+Low-cost payout：AI 算出发行价 ≈ 0.89，让出约 30% 盈利，融资成本更低，但可能认购更慢
 ```
 
 ### 5.3 AI 实时风险因素
@@ -231,6 +284,7 @@ type TradeCase = {
   bill_of_lading: BillOfLading;
   insurance: Insurance;
   financing: FinancingRequest;
+  trade_economics?: TradeEconomics;
   market: MarketFeed;
   shipment_events: ShipmentEvent[];
   macro_risk_events?: MacroRiskEvent[];
@@ -244,11 +298,27 @@ type FinancingRequest = {
   requested_cash_usd: number;
   payout_speed: 'FAST' | 'BALANCED' | 'LOW_COST';
   target_redemption_value_usd: 1;
+  redemption_coverage_limit: number;   // 默认 0.9，抵押覆盖护栏 (AI-5)
   requested_token_supply?: number;
   max_ltv: number;
   currency: 'USDC' | 'USD';
 };
 ```
+
+### 8.2.1 TradeEconomics（出口商盈利，AI 定价的输入，见 §2.4）
+
+```ts
+type TradeEconomics = {
+  cost_of_goods_usd?: number;          // 拿货成本 COGS
+  cost_basis_usd_per_mt?: number;      // 或按单位拿货价（× 数量 = COGS）
+  cost_basis_usd_per_bbl?: number;
+  expected_gross_profit_usd?: number;  // = invoice - COGS（引擎会用美元值重新核算）
+  gross_margin_pct?: number;           // 缺 COGS 时的兜底毛利率
+  note?: string;
+};
+```
+
+> 引擎始终用 `invoice - cost_of_goods` **重新计算**盈利和毛利率，存储字段只作展示，避免手填错值导致误定价。缺整个 `trade_economics` 时按 12% 毛利兜底。
 
 ### 8.3 MacroRiskEvent
 
@@ -275,18 +345,40 @@ type MacroRiskEvent = {
 type PricingQuote = {
   case_id: string;
   bl_id: string;
+  payout_speed: 'FAST' | 'BALANCED' | 'LOW_COST';
   target_redemption_value_usd: 1;
+
+  // collateral (from AI valuation)
   ai_verified_collateral_value_usd: number;
+  redemption_coverage_limit: number;
   max_safe_redemption_exposure_usd: number;
-  recommended_token_supply: number;
+
+  // exporter economics (drives the discount — see §2.4)
   requested_cash_usd: number;
-  base_issue_price_usd: number;
-  urgency_discount_bps: number;
-  risk_discount_bps: number;
-  final_issue_price_usd: number;
+  exporter_cost_of_goods_usd: number;
+  exporter_gross_profit_usd: number;
+  exporter_gross_margin_pct: number;
+
+  // price decomposition: base - urgency - risk = indicative; floors -> final
+  base_issue_price_usd: number;          // patient-money (LOW_COST) anchor
+  urgency_discount_bps: number;          // cost of speed
+  risk_discount_bps: number;             // cost of risk
+  indicative_issue_price_usd: number;    // base - urgency - risk (pre-floor)
+  final_issue_price_usd: number;         // after collateral floor / clamp
+  binding_constraint: 'EXPORTER_PROFIT' | 'COLLATERAL' | 'PRICE_CLAMP';
+
+  // results
+  recommended_token_supply: number;
+  target_redemption_exposure_usd: number;
   expected_cash_to_exporter_usd: number;
+  financing_cost_usd: number;
+  exporter_profit_share_bps: number;     // financing_cost / gross_profit (合理的比例)
+  exporter_net_profit_usd: number;
   implied_gross_yield_bps: number;
+
+  // risk + action + explanation
   risk_level: 'LOW' | 'MEDIUM' | 'WARNING' | 'CRITICAL';
+  risk_score_bps: number;                // 原始贸易风险分（与速度无关）
   pricing_action:
     | 'OPEN_OFFERING'
     | 'OPEN_WITH_WARNING'
@@ -296,9 +388,12 @@ type PricingQuote = {
     | 'TRIGGER_LIQUIDATION';
   risk_factors: string[];
   investor_explanation: string;
+  exporter_explanation: string;
   evidence_hash: string;
 };
 ```
+
+> Schema validator：`src/core/pricingSchema.js` 的 `assertPricingQuote(quote, caseData?)`，由 `npm run test`（`tests/pricingEngine.test.js`）校验。它强制三条不变量：`redemption_exposure ≤ max_safe`（抵押护栏 AI-5）、`base - urgency - risk = indicative`（折价分解自洽）、`final ≥ indicative`（地板只会抬价）。
 
 ### 8.5 RWAOfferingState
 
