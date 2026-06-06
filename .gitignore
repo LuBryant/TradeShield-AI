@@ -1,4 +1,6 @@
+
 # Secrets — real keys live in .env (untracked). Copy .env.example and fill in.
+main
 .env
 .env.local
 .env.*.local
@@ -6,6 +8,19 @@
 # Dependencies
 node_modules/
 
+# Hardhat build artifacts
+hardhat/node_modules/
+hardhat/cache/
+hardhat/artifacts/
+hardhat/deployments/sepolia.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
 # Logs / debug output
 *.log
 npm-debug.log*
