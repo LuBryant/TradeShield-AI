@@ -76,7 +76,7 @@ function parseArgs(raw) {
 }
 
 /** Run the LLM-driven tool-calling loop, capturing tool outputs. */
-async function runWithLlm(caseData, env, maxIterations) {
+async function runWithLlm(caseData, env, maxIterations, chat = chatCompletion) {
   const messages = [
     { role: 'system', content: SYSTEM_PROMPT },
     { role: 'user', content: buildUserPrompt(caseData) }
@@ -85,7 +85,7 @@ async function runWithLlm(caseData, env, maxIterations) {
   const toolTrace = [];
 
   for (let i = 0; i < maxIterations; i += 1) {
-    const message = await chatCompletion({ messages, tools: TOOL_SPECS }, env);
+    const message = await chat({ messages, tools: TOOL_SPECS }, env);
     messages.push(message);
 
     const toolCalls = message.tool_calls ?? [];
@@ -188,12 +188,15 @@ function assembleReport(caseData, { explanation, captured, toolTrace }, provider
 /**
  * Run the valuation agent on a case.
  * @param {object} caseData parsed case JSON (e.g. data/cases/copper-sg-shanghai.case.json)
- * @param {object} [options] { env, maxIterations, forceDeterministic }
+ * @param {object} [options] { env, maxIterations, forceDeterministic, chat }
+ *   options.chat overrides the chat-completion function (injected for testing the
+ *   LLM -> deterministic fallback path without a network call).
  * @returns structured valuation report (market valuation + historical comparables)
  */
 export async function runValuationAgent(caseData, options = {}) {
   const env = options.env ?? process.env;
   const maxIterations = options.maxIterations ?? 6;
+  const chat = options.chat ?? chatCompletion;
 
   if (options.forceDeterministic || !isConfigured(env)) {
     const run = await runDeterministic(caseData, env);
@@ -202,7 +205,7 @@ export async function runValuationAgent(caseData, options = {}) {
 
   const provider = resolveProvider(env)?.provider ?? 'llm';
   try {
-    const run = await runWithLlm(caseData, env, maxIterations);
+    const run = await runWithLlm(caseData, env, maxIterations, chat);
     // If the model produced no usable numbers, backfill deterministically.
     if (!run.captured.get_live_commodity_price) {
       const det = await runDeterministic(caseData, env);

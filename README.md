@@ -1766,14 +1766,18 @@ npm run demo
 npm run scenarios
 ```
 
-它会读取：
+它会跑两套引擎的回归：
 
 ```text
-data/demo-case.json
-data/scenarios/*.json
+1. legacy RiskReport 谐波：data/demo-case.json + data/scenarios/*.json
+   （低风险批准、预警保证金、严重风险清算）
+2. AI 动态定价场景：data/pricing-scenarios/*.json
+   （fast / balanced 正常开盘、high-risk 途中降价 reprice、high-risk 暂停 pause）
 ```
 
-并验证低风险批准、预警保证金、严重风险清算等核心路径。以后新增 AI、MCP、RAG、合约或前端功能时，至少要说明它影响哪个 scenario，并跑：
+第 2 套直接驱动 AI 定价引擎（risk discount = AI-4，high-risk pause/reprice = AI-10），
+所以 `npm run scenarios` 是这两个 AI 任务的验证命令。以后新增 AI、MCP、RAG、合约或前端功能时，
+至少要说明它影响哪个 scenario，并跑：
 
 ```bash
 npm run check
@@ -1781,3 +1785,18 @@ npm run test
 npm run smoke
 npm run scenarios
 ```
+
+## 26. 新增：Judge Q&A assistant（AI-12）
+
+彩排时用来回答评委追问的接地气问答助手（默认离线、确定性，可选 LLM 润色并自动兜底）：
+
+```bash
+npm run qa                          # 跑完整评委彩排问答（6 个标准问题）
+npm run qa -- "why discount to 0.80?"   # 回答单个自由问题
+npm run qa -- --llm "is it guaranteed?"  # 让已配置的 LLM 润色（出错自动回退到确定性答案）
+```
+
+每个回答都用**真实定价引擎数字**（`compareSpeeds` / `quoteFromCase`）和**检索到的风险情报引用**
+（`src/agent/riskIntel.js`）拼出，所以助手永远不会和定价引擎自相矛盾，也始终保留
+"target redemption 不是保本" 的合规口径。实现见 `src/agent/judgeAssistant.js`。
+

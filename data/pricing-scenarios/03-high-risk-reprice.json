@@ -11,7 +11,8 @@
     "max_issue_price": 0.81
   },
   "offering_expectations": {
-    "final_state": "Repriced",
+    "final_state": "Redeemed",
+    "includes_states": ["Repriced"],
     "events": [
       {
         "category": "macro",
