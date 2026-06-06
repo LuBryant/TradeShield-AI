@@ -1559,9 +1559,9 @@ Risk events: bad weather, delay, insurance expiry risk, copper price drop
 ```text
 出口商上传 eBL + 商业发票
 → AI 调用工具：实时 LME 铜价 + 历史同类成交价 + 估值（npm run agent:value）
-→ AI 输出 PricingQuote：发行折价 0.85（FAST 到账）
-→ Created → Priced → Open（投资者按 0.85 认购）
-→ 霍尔木兹战争升级 + 铜价剧烈波动 → AI 把价压到 0.78
+→ AI 输出 PricingQuote：发行价 ≈ 0.80（FAST 到账，让出约 60% 盈利）
+→ Created → Priced → Open（投资者按 ≈ 0.80 认购）
+→ 霍尔木兹战争升级 + 铜价剧烈波动 → AI 把价压到 ≈ 0.76
 → Repriced / Paused，RiskPricingOracle 记录新价 + 证据哈希
 ```
 
@@ -1569,7 +1569,7 @@ Risk events: bad weather, delay, insurance expiry risk, copper price drop
 
 ```text
 AI 调用工具拉了真实价格和历史成交价
-→ 把"速度 + 风险"折算成发行折价（0.85 → 0.78）
+→ 把"速度 + 风险"折算成发行价（≈ 0.80 → ≈ 0.76）
 → pricing_action / offering 状态变化
 → 前端或 CLI 展示价格、目标兑付价、风险来源、证据哈希
 ```

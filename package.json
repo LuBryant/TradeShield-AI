@@ -12,7 +12,8 @@
     "demo": "node scripts/demo.mjs",
     "smoke": "node scripts/smoke.mjs",
     "scenarios": "node scripts/scenarios.mjs",
-    "agent:value": "node scripts/agent-valuation.mjs"
+    "agent:value": "node scripts/agent-valuation.mjs",
+    "price": "node scripts/price.mjs"
   },
   "engines": {
     "node": ">=18.18.0"

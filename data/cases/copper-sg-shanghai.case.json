@@ -61,8 +61,15 @@
     "expires_at": "2026-07-05",
     "policy_hash": "0x4b2e8f1c90a7d3556e0c1a9f72b4d8e63c5170af9d2e84b1c6f30a72e5841db9"
   },
+  "trade_economics": {
+    "cost_basis_usd_per_mt": 11000,
+    "cost_of_goods_usd": 5500000,
+    "expected_gross_profit_usd": 1375000,
+    "gross_margin_pct": 0.2,
+    "note": "Exporter sourced/contracted the copper pre-Hormuz spike (~USD 11,000/MT) versus the CIF Shanghai invoice of USD 13,750/MT; the war premium is embedded margin. Profit (= invoice 6,875,000 - COGS 5,500,000 = 1,375,000) is what funds the RWA discount."
+  },
   "financing": {
-    "requested_cash_usd": 5500000,
+    "requested_cash_usd": 3300000,
     "payout_speed": "FAST",
     "target_redemption_value_usd": 1,
     "redemption_coverage_limit": 0.9,

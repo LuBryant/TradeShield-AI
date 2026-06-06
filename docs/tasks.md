@@ -21,7 +21,7 @@
 | ID | Task | Owner | Status | Verification | Done Evidence |
 |---|---|---|---|---|---|
 | PM-1 | 固定一句话 pitch：AI dynamically prices eBL-backed RWA | Bowen | Done | README / pitch 更新 | - |
-| PM-2 | 明确 RWA 折价发行模型：0.80 / 0.90 / 1.00 target redemption | Unassigned | Todo | docs/PRD.md 已体现 | - |
+| PM-2 | 明确 RWA 折价发行模型：0.80 / 0.90 / 1.00 target redemption | Bowen | Done | docs/PRD.md 已体现 | PRD §2.2/§2.4 折价模型 + 合理比例表 + §8.4 PricingQuote |
 | PM-3 | 准备 3 分钟 demo 脚本：出口商融资 -> AI 定价 -> 投资者认购 -> 风险改价 | Unassigned | Todo | script 文档或 README 更新 | - |
 | PM-4 | 准备合规 Q&A：target redemption 不是保本承诺 | Unassigned | Todo | docs/PRD.md / pitch 更新 | - |
 | PM-5 | 准备 investor-facing 文案：折价、风险、潜在收益、非保本 | Unassigned | Todo | 前端文案 review | - |
@@ -34,12 +34,12 @@ AI 的目标不是“写一段解释”，而是产出可被后端、前端和�
 
 | ID | Task | Owner | Status | Verification | Done Evidence |
 |---|---|---|---|---|---|
-| AI-1 | 固定 `PricingQuote` JSON schema | Bowen | In Progress | `npm run test` | - |
-| AI-2 | 实现 base issue price：根据 `payout_speed` 输出 0.80 / 0.86 / 0.90 等基础价格 | Bowen | In Progress | pricing unit test | - |
-| AI-3 | 实现 urgency discount：出口商越急，发行价越低 | Bowen | In Progress | scenario test | - |
-| AI-4 | 实现 risk discount：天气、战争、港口、保险、价格波动影响发行价 | Bowen | In Progress | `npm run scenarios` | - |
-| AI-5 | 实现 collateral coverage guardrail：防止 100 万货物发行过高目标兑付敞口 | Bowen | In Progress | pricing invariant test | - |
-| AI-6 | 实现 investor explanation generator：解释为什么价格是 0.80 / 0.90 | Bowen | In Progress | `npm run demo` 输出包含 explanation | - |
+| AI-1 | 固定 `PricingQuote` JSON schema | Bowen | Done | `npm run test` | src/core/pricingSchema.js `assertPricingQuote` + tests/pricingEngine.test.js |
+| AI-2 | 实现 base issue price：根据 `payout_speed` 输出按速度单调的基础价格（参考案例 ≈0.80/0.85/0.89） | Bowen | Done | pricing unit test | src/core/pricingEngine.js `priceRwaOffering`（BASE_PROFIT_SHARE） |
+| AI-3 | 实现 urgency discount：出口商越急，发行价越低 | Bowen | Done | scenario test | pricingEngine urgency_discount_bps；tests/pricingEngine.test.js AI-3 |
+| AI-4 | 实现 risk discount：天气、战争、港口、保险、价格波动影响发行价 | Bowen | In Progress | `npm run scenarios` | pricingEngine `scoreRisk` 已实现风险折价；待接 scenarios |
+| AI-5 | 实现 collateral coverage guardrail：防止 100 万货物发行过高目标兑付敞口 | Bowen | Done | pricing invariant test | pricingEngine 抵押价格地板 + assertPricingQuote 不变量 |
+| AI-6 | 实现 investor explanation generator：解释为什么价格是 0.80 / 0.90 | Bowen | Done | `npm run demo` 输出包含 explanation | pricingEngine investor_explanation/exporter_explanation；demo.mjs 已打印 |
 | AI-7 | 实现 evidence graph mock：列出每个折扣对应的证据 | Bowen | In Progress | schema test | - |
 | AI-8 | 实现 document consistency checker：eBL / invoice / insurance 字段一致性 | Bowen | In Progress | fixture test | - |
 | AI-9 | 接入 Qwen / DeepSeek 可选 provider，必须有 deterministic fallback | Bowen | In Progress | provider fallback test | - |

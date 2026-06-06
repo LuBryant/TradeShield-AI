@@ -65,6 +65,13 @@
     "expires_at": "2026-07-02",
     "policy_hash": "0x7c10e93a64b2f8851d0a3c7e519b6f24d8730ae1c95b2076e4f8a13c0d6e92f5"
   },
+  "trade_economics": {
+    "cost_basis_usd_per_bbl": 77,
+    "cost_of_goods_usd": 46200000,
+    "expected_gross_profit_usd": 11700000,
+    "gross_margin_pct": 0.2021,
+    "note": "Exporter contracted the cargo at ~USD 77/bbl earlier in the cycle versus the CIF Ulsan invoice of USD 96.5/bbl; the war premium is embedded margin. Profit (= invoice 57,900,000 - COGS 46,200,000 = 11,700,000) funds the RWA discount."
+  },
   "financing": {
     "requested_cash_usd": 46000000,
     "payout_speed": "BALANCED",
