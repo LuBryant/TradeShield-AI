@@ -15,7 +15,8 @@
     "price:scenarios": "node scripts/pricing-scenarios.mjs",
     "agent:value": "node scripts/agent-valuation.mjs",
     "price": "node scripts/price.mjs",
-    "qa": "node scripts/judge-qa.mjs"
+    "qa": "node scripts/judge-qa.mjs",
+    "mcp": "node scripts/mcp.mjs"
   },
   "engines": {
     "node": ">=18.18.0"

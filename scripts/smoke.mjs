@@ -29,10 +29,12 @@ try {
 
   const scenarios = await fetch(`${baseUrl}/api/scenarios`).then((r) => r.json());
   assert.equal(scenarios.ok, true);
-  assert.ok(scenarios.scenarios.length >= 4);
+  assert.ok(scenarios.scenarios.length >= 5);
   assert.ok(scenarios.scenarios.some((scenario) => scenario.contract_action === 'APPROVE_FINANCING'));
   assert.ok(scenarios.scenarios.some((scenario) => scenario.contract_action === 'TRIGGER_LIQUIDATION'));
-
+  assert.ok(scenarios.scenarios.some((scenario) => scenario.contract_action === 'FREEZE_POOL'));
+  assert.ok(scenarios.scenarios.some((scenario) => scenario.contract_action === 'CONTINUE_WITH_WARNING'));
+  assert.ok(scenarios.scenarios.some((scenario) => scenario.contract_action === 'TRIGGER_MARGIN_CALL'));
   // BE-3: AI dynamic-pricing quote (empty body -> demo case).
   const quote = await fetch(`${baseUrl}/api/pricing/quote`, { method: 'POST' }).then((r) => r.json());
   assert.ok(quote.final_issue_price_usd > 0 && quote.final_issue_price_usd <= 1, 'issue price in (0,1]');
@@ -92,7 +94,50 @@ try {
   assert.equal(oracle.pool_id, 'POOL-SMOKE');
   assert.ok(oracle.pricing_action && oracle.offering_state);
 
-  console.log('smoke passed: health, demo data, risk, workflow, scenarios, pricing quote, offering, merged workflow and oracle update work.');
+  // MCP endpoints
+  const mcpTools = await fetch(`${baseUrl}/api/mcp/tools`).then((r) => r.json());
+  assert.equal(mcpTools.ok, true);
+  assert.equal(mcpTools.tools.length, 5);
+
+  const mcpCall = await fetch(`${baseUrl}/api/mcp/call`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ tool: 'get_trade_case', params: { case_id: 'CASE-EBL-2026-0001' } })
+  }).then((r) => r.json());
+  assert.equal(mcpCall.ok, true);
+  assert.equal(mcpCall.result.case_id, 'CASE-EBL-2026-0001');
+
+  // RAG endpoints
+  const ragSearch = await fetch(`${baseUrl}/api/rag/search`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ query: 'copper' })
+  }).then((r) => r.json());
+  assert.equal(ragSearch.ok, true);
+  assert.ok(ragSearch.match_count > 0);
+
+  const judgeQA = await fetch(`${baseUrl}/api/rag/judge-qa`).then((r) => r.json());
+  assert.equal(judgeQA.ok, true);
+  assert.equal(judgeQA.pairs.length, 4);
+
+  // Skill endpoints
+  const skillPricing = await fetch(`${baseUrl}/api/skill/pricing-analyst`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ case_id: 'CASE-EBL-2026-0001' })
+  }).then((r) => r.json());
+  assert.equal(skillPricing.ok, true);
+  assert.equal(skillPricing.status, 'ok');
+
+  const skillDemo = await fetch(`${baseUrl}/api/skill/demo-operator`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ case_id: 'CASE-EBL-2026-0001' })
+  }).then((r) => r.json());
+  assert.equal(skillDemo.ok, true);
+  assert.equal(skillDemo.status, 'ok');
+
+  console.log('smoke passed: health, demo data, risk, workflow, scenarios, pricing quote, offering, merged workflow, oracle update, MCP, RAG and Skill harness work.');
 } finally {
   server.close();
 }
