@@ -33,6 +33,29 @@
           <ol id="timeline"></ol>
         </article>
       </section>
+      <section class="mcp-section">
+        <h2>MCP Console</h2>
+        <div class="mcp-grid">
+          <div><h3>Tool Invocation</h3>
+            <select id="mcp-tool-select"><option value="">-- Select tool --</option></select>
+            <div id="mcp-params"></div>
+            <button id="mcp-call-btn" disabled>Call Tool</button>
+            <span id="mcp-status"></span>
+            <pre id="mcp-result">Select a tool and click "Call Tool".</pre>
+          </div>
+          <div><h3>Manifest</h3><pre id="mcp-manifest">Loading...</pre></div>
+        </div>
+      </section>
+      <section class="rag-section">
+        <h2>RAG Risk Intelligence</h2>
+        <div class="rag-grid">
+          <div><h3>Search</h3>
+            <div class="search-bar"><input id="rag-query" placeholder='"Red Sea", "copper price", "monsoon"...' /><select id="rag-category"><option value="">All</option></select><button id="rag-search-btn">Search</button></div>
+            <div id="rag-results"></div>
+          </div>
+          <div><h3>Judge Q&A</h3><div id="judge-qa">Loading...</div></div>
+        </div>
+      </section>
     </main>
     <script src="/app.js"></script>
   </body>

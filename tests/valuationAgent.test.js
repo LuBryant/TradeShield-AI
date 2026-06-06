@@ -52,7 +52,6 @@ test('resolveProvider selects by env key and returns null when none set', () => 
   assert.equal(resolveProvider({ LLM_BASE_URL: 'https://h/v1', LLM_API_KEY: 'x' }).provider, 'custom');
   assert.equal(resolveProvider({}), null);
 });
-
 test('AI-9: a configured LLM that errors falls back to the deterministic valuation', async () => {
   // env has a provider key, so the agent takes the LLM path; the injected chat
   // throws, exercising the deterministic fallback with no network call.

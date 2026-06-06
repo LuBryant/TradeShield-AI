@@ -1,7 +1,6 @@
 import fs from 'node:fs/promises';
 import { simulateWorkflow } from '../src/core/workflow.js';
 import { compareSpeeds } from '../src/core/pricingEngine.js';
-
 // --- Part 1: legacy RiskReport workflow (kept for backwards-compatible demo) ---
 const data = JSON.parse(await fs.readFile('data/demo-case.json', 'utf8'));
 const result = simulateWorkflow(data);
@@ -44,4 +43,3 @@ console.log('\nInvestor explanation');
 console.log('  ' + rec.investor_explanation);
 console.log('\nExporter explanation');
 console.log('  ' + rec.exporter_explanation);
-console.log('\nEvidence hash: ' + rec.evidence_hash);

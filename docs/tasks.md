@@ -12,7 +12,7 @@
 | P0 | 跑通 AI 定价主链路 | 出口商选择到账速度，AI 给出 RWA 发行价，投资者看到折价和风险 |
 | P0 | 固定 PricingQuote schema | 让 AI、后端、前端、合约都围绕同一份结构化输出 |
 | P0 | 完成 Investor RWA Offering 页面 | 评委必须看到“风险越高，价格越低，潜在收益越高” |
-| P1 | 合约 mock / 最小 Solidity | RWAOfferingPool + RiskPricingOracle |
+| P1 | 合约 mock / 最小 Solidity | RWAOfferingPool + RiskPricingOracle（WEB3-1~9 Done；WEB3-10~11 待做） |
 | P1 | 多场景回归 | fast / balanced / high-risk repricing |
 | P2 | MCP / RAG / Skill | 作为 Agent 能力加分项，不阻塞主 demo |
 
@@ -21,7 +21,7 @@
 | ID | Task | Owner | Status | Verification | Done Evidence |
 |---|---|---|---|---|---|
 | PM-1 | 固定一句话 pitch：AI dynamically prices eBL-backed RWA | Bowen | Done | README / pitch 更新 | - |
-| PM-2 | 明确 RWA 折价发行模型：0.80 / 0.90 / 1.00 target redemption | Unassigned | Todo | docs/PRD.md 已体现 | - |
+| PM-2 | 明确 RWA 折价发行模型：0.80 / 0.90 / 1.00 target redemption | Bowen | Done | docs/PRD.md 已体现 | - |
 | PM-3 | 准备 3 分钟 demo 脚本：出口商融资 -> AI 定价 -> 投资者认购 -> 风险改价 | Unassigned | Todo | script 文档或 README 更新 | - |
 | PM-4 | 准备合规 Q&A：target redemption 不是保本承诺 | Unassigned | Todo | docs/PRD.md / pitch 更新 | - |
 | PM-5 | 准备 investor-facing 文案：折价、风险、潜在收益、非保本 | Unassigned | Todo | 前端文案 review | - |
@@ -53,16 +53,16 @@ AI 的目标不是“写一段解释”，而是产出可被后端、前端和�
 
 | ID | Task | Owner | Status | Verification | Done Evidence |
 |---|---|---|---|---|---|
-| BE-1 | 更新 demo case：加入 `requested_cash_usd`、`payout_speed`、`target_redemption_value_usd` | Unassigned | Todo | `npm run check` | - |
-| BE-2 | 增加 `PricingQuote` schema validator | Unassigned | Todo | `npm run test` | - |
-| BE-3 | 实现 `/api/pricing/quote` | Unassigned | Todo | `npm run smoke` | - |
-| BE-4 | 实现 `/api/offering/simulate`：发行、认购、风险改价、暂停、结算 | Unassigned | Todo | `npm run smoke` | - |
-| BE-5 | 增加 scenario fixtures：fast payout / balanced payout / high-risk repricing | Unassigned | Todo | `npm run scenarios` | - |
-| BE-6 | 把 PricingQuote 和 RiskReport 合并进 workflow simulation | Unassigned | Todo | `npm run test` | - |
-| BE-7 | API 错误输入校验：发行数量过高、价格不合法、target redemption 超抵押覆盖 | Unassigned | Todo | invalid payload test | - |
-| BE-8 | 输出 `quote_hash` / `evidence_hash`，供合约 oracle 使用 | Unassigned | Todo | `npm run test` | - |
-| BE-9 | 保持原有 `/api/health`、`/api/demo-data`、`/api/risk/analyze`、`/api/workflow/simulate` 可用 | Unassigned | Todo | `npm run smoke` | - |
-| BE-10 | 集成最终 demo CLI：打印 RWA price、investor yield、risk factors | Unassigned | Todo | `npm run demo` | - |
+| BE-1 | 更新 demo case：加入 `requested_cash_usd`、`payout_speed`、`target_redemption_value_usd` | Bowen | Done | `npm run check` | data/demo-case.json 新增 financing.requested_cash_usd/payout_speed/target_redemption_value_usd/redemption_coverage_limit + trade_economics（保留全部 legacy 字段，assertTradeCase 仍通过）；scripts/check.mjs 断言新字段并校验 quoteFromCase→assertPricingQuote |
+| BE-2 | 增加 `PricingQuote` schema validator | Bowen | Done | `npm run test` | tests/pricingSchema.test.js 直接覆盖 assertPricingQuote：正例 + 3 条不变量负例（exposure≤max_safe / base−urgency−risk=indicative / final≥indicative）+ 缺字段/非法枚举/0x hash/case_id 交叉校验；`npm run test` 63 passed |
+| BE-3 | 实现 `/api/pricing/quote` | Bowen | Done | `npm run smoke` | src/app/server.js POST /api/pricing/quote（空 body→demo case，`?compare=true` 返回三速+推荐，payout_speed 非法→400）+ resolvePricingRequest 复用；scripts/smoke.mjs + tests/smoke.test.js 覆盖 |
+| BE-4 | 实现 `/api/offering/simulate`：发行、认购、风险改价、暂停、结算 | Bowen | Done | `npm run smoke` | src/app/server.js POST /api/offering/simulate（基于 offeringSimulator：Created→…→Repriced/Paused→Redeemed，`events` 途中升级风险）；smoke + tests/smoke.test.js 覆盖 reprice→Redeemed 与 war-crisis→Paused |
+| BE-5 | 增加 scenario fixtures：fast payout / balanced payout / high-risk repricing | Bowen | Done | `npm run scenarios` | data/pricing-scenarios/01-fast-payout、02-balanced-payout、03-high-risk-reprice（+04-high-risk-pause）经 src/core/pricingScenarioRunner.js 驱动；`npm run scenarios` 4 legacy + 4 pricing passed；tests/pricingScenarioRunner.test.js 锁定 |
+| BE-6 | 把 PricingQuote 和 RiskReport 合并进 workflow simulation | Bowen | Done | `npm run test` | src/core/pricingWorkflow.js `simulatePricingWorkflow` 合并 pricing_quote + risk_report + offering（action/evidence_hash/risk_level 一致）；POST /api/workflow/pricing-simulate；tests/pricingWorkflow.test.js（reprice→Redeemed、war→Paused）；`npm run test` 80 passed |
+| BE-7 | API 错误输入校验：发行数量过高、价格不合法、target redemption 超抵押覆盖 | Bowen | Done | invalid payload test | src/app/server.js resolvePricingRequest 校验 payout_speed / requested_cash_usd>0 / subscription_usd≥0 / target_redemption=1 / events 为数组 → 400；tests/apiValidation.test.js 6 个非法 payload 用例；抵押超额由引擎 AI-5 护栏 + assertPricingQuote 不变量兜底 |
+| BE-8 | 输出 `quote_hash` / `evidence_hash`，供合约 oracle 使用 | Bowen | Done | `npm run test` | src/core/oracle.js `toOracleUpdate`（issue_price/risk/action/offering_state + evidence_hash + quote_hash + supply/target，对齐 RiskPricingOracle.updatePricing / RWAOfferingPool.createOffering）；POST /api/oracle/pricing-update；tests/oracle.test.js + smoke 覆盖 |
+| BE-9 | 保持原有 `/api/health`、`/api/demo-data`、`/api/risk/analyze`、`/api/workflow/simulate` 可用 | Bowen | Done | `npm run smoke` | 四个 legacy 端点全部保留并未改动语义；scripts/smoke.mjs 现显式覆盖 health/demo-data/risk-analyze/workflow-simulate；`npm run smoke` 通过 |
+| BE-10 | 集成最终 demo CLI：打印 RWA price、investor yield、risk factors | Bowen | Done | `npm run demo` | scripts/demo.mjs 打印 RWA issue price / investor yield / risk factors / 融资成本 + 链上 oracle hashes + AI 叙述；src/agent/pricingNarrator.js（确定性优先，可选 LLM 润色出错自动回退）；接入 Tencent **hy3-preview**（src/agent/llm/openaiCompatClient.js，model 锁定，优先级最高）；`npm run demo` 离线 + 实测 hy3-preview 均通过 |
 
 ## 5. Frontend
 
@@ -85,18 +85,27 @@ AI 的目标不是“写一段解释”，而是产出可被后端、前端和�
 
 Web3 目标：把 AI 定价结果写成链上可验证事件，而不是只在前端展示。
 
+**进度摘要（2026-06-05）**
+
+| 范围 | 状态 | 说明 |
+|---|---|---|
+| WEB3-1 ~ WEB3-4 | Done | 冻结设计见 `docs/contracts.md` |
+| WEB3-5 | Done | JS contract mock：`src/core/contractHarness.js` |
+| WEB3-6 ~ WEB3-9 | Done | Hardhat 合约 + 测试：`hardhat/`，`hardhat test` 6 passing |
+| WEB3-10 ~ WEB3-11 | Todo | 测试网部署 |
+
 | ID | Task | Owner | Status | Verification | Done Evidence |
 |---|---|---|---|---|---|
-| WEB3-1 | 设计 `EBLRegistry`：mint / pledge / release pledge | Sage | Todo | docs/PRD.md 更新 | - |
-| WEB3-2 | 设计 `RWAToken`：代表投资者 RWA 凭证 | Sage | Todo | contract interface doc | - |
-| WEB3-3 | 设计 `RWAOfferingPool`：createOffering / subscribe / settle / pause | Sage | Todo | contract interface doc | - |
-| WEB3-4 | 设计 `RiskPricingOracle`：updatePricing(poolId, issuePrice, riskLevel, action, evidenceHash) | Sage | Todo | contract interface doc | - |
-| WEB3-5 | 实现 JS contract mock：模拟发行、认购、改价、暂停 | Sage | Todo | `npm run test` | - |
-| WEB3-6 | 建立 Hardhat 合约目录结构 | Sage | Todo | `hardhat compile` | - |
-| WEB3-7 | 实现最小 Solidity `RiskPricingOracle` 并 emit `PricingUpdated` | Sage | Todo | `hardhat test` | - |
-| WEB3-8 | 实现最小 Solidity `RWAOfferingPool` | Sage | Todo | `hardhat test` | - |
-| WEB3-9 | 把 `quote_hash` / `evidence_hash` 写入合约事件 | Sage | Todo | contract event test | - |
-| WEB3-10 | 部署到 Sepolia 或 Base Sepolia 测试网 | Sage | Todo | 部署地址 + tx hash | - |
+| WEB3-1 | 设计 `EBLRegistry`：mint / pledge / release pledge | Sage | Done | docs/PRD.md 更新 | `docs/contracts.md` §3 + `docs/PRD.md` §9.3 |
+| WEB3-2 | 设计 `RWAToken`：代表投资者 RWA 凭证 | Sage | Done | contract interface doc | `docs/contracts.md` §4 |
+| WEB3-3 | 设计 `RWAOfferingPool`：createOffering / subscribe / settle / pause | Sage | Done | contract interface doc | `docs/contracts.md` §5 |
+| WEB3-4 | 设计 `RiskPricingOracle`：updatePricing(poolId, issuePrice, riskLevel, action, evidenceHash) | Sage | Done | contract interface doc | `docs/contracts.md` §6 |
+| WEB3-5 | 实现 JS contract mock：模拟发行、认购、改价、暂停 | Sage | Done | `npm run test` | `src/core/contractHarness.js` + `tests/contractHarness.test.js`，`npm run test` 10 passed，事件已对齐 `docs/contracts.md` |
+| WEB3-6 | 建立 Hardhat 合约目录结构 | Sage | Done | `hardhat compile` | `hardhat/`（package.json + hardhat.config.cjs），`hardhat compile` 4 files OK |
+| WEB3-7 | 实现最小 Solidity `RiskPricingOracle` 并 emit `PricingUpdated` | Sage | Done | `hardhat test` | `hardhat/contracts/RiskPricingOracle.sol`，`hardhat test` 6 passing |
+| WEB3-8 | 实现最小 Solidity `RWAOfferingPool` | Sage | Done | `hardhat test` | `hardhat/contracts/RWAOfferingPool.sol`（+ EBLRegistry/RWAToken），`hardhat test` 6 passing |
+| WEB3-9 | 把 `quote_hash` / `evidence_hash` 写入合约事件 | Sage | Done | contract event test | `PricingUpdated` + `OfferingRepriced` 含 evidence/quote hash，`latestQuoteHash/latestEvidenceHash` 持久化，测试已验证 |
+| WEB3-10 | 部署到 Sepolia 测试网 | Sage | Todo | 部署地址 + tx hash | - |
 | WEB3-11 | 前端展示合约地址和 PricingUpdated event | Sage | Todo | 手动演示 | - |
 
 ## 7. MCP / RAG / Skill
@@ -105,15 +114,15 @@ Web3 目标：把 AI 定价结果写成链上可验证事件，而不是只在�
 
 | ID | Task | Owner | Status | Verification | Done Evidence |
 |---|---|---|---|---|---|
-| MCP-1 | 设计 TradeShield MCP tools manifest | Unassigned | Todo | docs 更新 | - |
-| MCP-2 | 实现 `get_trade_case` | Unassigned | Todo | MCP tool call test | - |
-| MCP-3 | 实现 `generate_pricing_quote` | Unassigned | Todo | MCP tool call test | - |
-| MCP-4 | 实现 `simulate_offering` | Unassigned | Todo | MCP tool call test | - |
-| MCP-5 | 实现 `push_pricing_to_oracle` mock / real tx | Unassigned | Todo | mock receipt / tx hash | - |
-| RAG-1 | 建立风险情报资料：天气、战争、港口、保险、价格 mock feed | Unassigned | Todo | retrieval eval | - |
-| RAG-2 | 准备 4 个评委追问检索问题 | Unassigned | Todo | Q&A dry run | - |
-| SKILL-1 | 创建 `tradeshield-pricing-analyst` skill | Unassigned | Todo | skill dry run | - |
-| SKILL-2 | 创建 `tradeshield-demo-operator` skill | Unassigned | Todo | demo rehearsal | - |
+| MCP-1 | 设计 TradeShield MCP tools manifest | Xlen | Done | `npm run smoke` | merged from feature/mcp-server |
+| MCP-2 | 实现 `get_trade_case` | Xlen | Done | `npm run test` | merged from feature/mcp-server |
+| MCP-3 | 实现 `generate_pricing_quote` | Xlen | Done | `npm run test` | merged from feature/mcp-server |
+| MCP-4 | 实现 `simulate_offering` | Xlen | Done | `npm run test` | merged from feature/mcp-server |
+| MCP-5 | 实现 `push_pricing_to_oracle` mock / real tx | Xlen | Done | `npm run test` | merged from feature/mcp-server |
+| RAG-1 | 建立风险情报资料：天气、战争、港口、保险、价格 mock feed | Xlen | Done | `npm run test` | merged from feature/mcp-server |
+| RAG-2 | 准备 4 个评委追问检索问题 | Xlen | Done | `npm run test` | merged from feature/mcp-server |
+| SKILL-1 | 创建 `tradeshield-pricing-analyst` skill | Xlen | Done | `npm run smoke` | merged from feature/mcp-server |
+| SKILL-2 | 创建 `tradeshield-demo-operator` skill | Xlen | Done | `npm run smoke` | merged from feature/mcp-server |
 
 ## 8. QA / Integrator
 
@@ -128,7 +137,7 @@ QA 目标：任何新增功能都必须回到同一条主链路，不能散。
 | QA-5 | 增加 pricing invariant tests：兑付敞口不能超过安全覆盖 | Unassigned | Todo | `npm run test` | - |
 | QA-6 | 增加前端手动验收清单 | Unassigned | Todo | checklist 文档 | - |
 | QA-7 | 最终演示前跑完整验证矩阵 | Unassigned | Todo | `npm run check && npm run test && npm run smoke && npm run scenarios && npm run demo` | - |
-| QA-8 | 准备演示失败兜底：CLI demo、mock provider、contract mock | Unassigned | Todo | README / docs 更新 | - |
+| QA-8 | 准备演示失败兜底：CLI demo、mock provider、contract mock | Unassigned | Todo | README / docs 更新 | contract mock 已完成（`contractHarness.js`）；CLI demo / README 兜底说明待补 |
 | QA-9 | 最后 6 小时功能冻结协调 | Unassigned | Todo | 全员确认 | - |
 
 ## 9. 推荐并行分工

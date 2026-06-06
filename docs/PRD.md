@@ -440,16 +440,20 @@ type RWAOfferingState =
 
 ### 9.3 合约接口
 
+WEB3-1 到 WEB3-4 的冻结版接口、事件、权限和状态机定义见 `docs/contracts.md`。本节只保留主流程摘要，后续 JS contract mock 和 Solidity 实现必须以 `docs/contracts.md` 为准。
+
 | Contract | Function | 用途 |
 |---|---|---|
 | EBLRegistry | `mintEBL(metadataHash, holder)` | 登记电子提单凭证 |
 | EBLRegistry | `pledge(eblId, pool)` | 将 eBL 质押给融资池 |
+| EBLRegistry | `releasePledge(eblId)` | 结算或取消后解除质押 |
 | RWAToken | `mint(poolId, investor, amount)` | 给认购投资者铸造 RWA 凭证 |
 | RWAOfferingPool | `createOffering(eblId, tokenSupply, issuePrice, targetRedemptionValue)` | 创建 RWA 发行池 |
 | RWAOfferingPool | `subscribe(poolId, amount)` | 投资者认购 |
+| RWAOfferingPool | `applyPricingAction(poolId, newIssuePrice, action, evidenceHash, quoteHash)` | 根据 AI 定价动作改价、暂停、冻结或清算 |
 | RWAOfferingPool | `pauseOffering(poolId)` | 风险升高时暂停发行 |
 | RWAOfferingPool | `settle(poolId)` | 进口商付款后结算 |
-| RiskPricingOracle | `updatePricing(poolId, issuePrice, riskLevel, action, evidenceHash)` | AI 定价和风险信号上链 |
+| RiskPricingOracle | `updatePricing(poolId, issuePrice, riskLevel, action, evidenceHash, quoteHash)` | AI 定价和风险信号上链，并 emit `PricingUpdated` |
 
 ## 10. 页面列表
 
