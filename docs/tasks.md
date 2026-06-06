@@ -53,16 +53,16 @@ AI 的目标不是“写一段解释”，而是产出可被后端、前端和�
 
 | ID | Task | Owner | Status | Verification | Done Evidence |
 |---|---|---|---|---|---|
-| BE-1 | 更新 demo case：加入 `requested_cash_usd`、`payout_speed`、`target_redemption_value_usd` | Unassigned | Todo | `npm run check` | - |
-| BE-2 | 增加 `PricingQuote` schema validator | Unassigned | Todo | `npm run test` | - |
-| BE-3 | 实现 `/api/pricing/quote` | Unassigned | Todo | `npm run smoke` | - |
-| BE-4 | 实现 `/api/offering/simulate`：发行、认购、风险改价、暂停、结算 | Unassigned | Todo | `npm run smoke` | - |
-| BE-5 | 增加 scenario fixtures：fast payout / balanced payout / high-risk repricing | Unassigned | Todo | `npm run scenarios` | - |
-| BE-6 | 把 PricingQuote 和 RiskReport 合并进 workflow simulation | Unassigned | Todo | `npm run test` | - |
-| BE-7 | API 错误输入校验：发行数量过高、价格不合法、target redemption 超抵押覆盖 | Unassigned | Todo | invalid payload test | - |
-| BE-8 | 输出 `quote_hash` / `evidence_hash`，供合约 oracle 使用 | Unassigned | Todo | `npm run test` | - |
-| BE-9 | 保持原有 `/api/health`、`/api/demo-data`、`/api/risk/analyze`、`/api/workflow/simulate` 可用 | Unassigned | Todo | `npm run smoke` | - |
-| BE-10 | 集成最终 demo CLI：打印 RWA price、investor yield、risk factors | Unassigned | Todo | `npm run demo` | - |
+| BE-1 | 更新 demo case：加入 `requested_cash_usd`、`payout_speed`、`target_redemption_value_usd` | Bowen | Done | `npm run check` | data/demo-case.json 新增 financing.requested_cash_usd/payout_speed/target_redemption_value_usd/redemption_coverage_limit + trade_economics（保留全部 legacy 字段，assertTradeCase 仍通过）；scripts/check.mjs 断言新字段并校验 quoteFromCase→assertPricingQuote |
+| BE-2 | 增加 `PricingQuote` schema validator | Bowen | Done | `npm run test` | tests/pricingSchema.test.js 直接覆盖 assertPricingQuote：正例 + 3 条不变量负例（exposure≤max_safe / base−urgency−risk=indicative / final≥indicative）+ 缺字段/非法枚举/0x hash/case_id 交叉校验；`npm run test` 63 passed |
+| BE-3 | 实现 `/api/pricing/quote` | Bowen | Done | `npm run smoke` | src/app/server.js POST /api/pricing/quote（空 body→demo case，`?compare=true` 返回三速+推荐，payout_speed 非法→400）+ resolvePricingRequest 复用；scripts/smoke.mjs + tests/smoke.test.js 覆盖 |
+| BE-4 | 实现 `/api/offering/simulate`：发行、认购、风险改价、暂停、结算 | Bowen | Done | `npm run smoke` | src/app/server.js POST /api/offering/simulate（基于 offeringSimulator：Created→…→Repriced/Paused→Redeemed，`events` 途中升级风险）；smoke + tests/smoke.test.js 覆盖 reprice→Redeemed 与 war-crisis→Paused |
+| BE-5 | 增加 scenario fixtures：fast payout / balanced payout / high-risk repricing | Bowen | Done | `npm run scenarios` | data/pricing-scenarios/01-fast-payout、02-balanced-payout、03-high-risk-reprice（+04-high-risk-pause）经 src/core/pricingScenarioRunner.js 驱动；`npm run scenarios` 4 legacy + 4 pricing passed；tests/pricingScenarioRunner.test.js 锁定 |
+| BE-6 | 把 PricingQuote 和 RiskReport 合并进 workflow simulation | Bowen | Done | `npm run test` | src/core/pricingWorkflow.js `simulatePricingWorkflow` 合并 pricing_quote + risk_report + offering（action/evidence_hash/risk_level 一致）；POST /api/workflow/pricing-simulate；tests/pricingWorkflow.test.js（reprice→Redeemed、war→Paused）；`npm run test` 80 passed |
+| BE-7 | API 错误输入校验：发行数量过高、价格不合法、target redemption 超抵押覆盖 | Bowen | Done | invalid payload test | src/app/server.js resolvePricingRequest 校验 payout_speed / requested_cash_usd>0 / subscription_usd≥0 / target_redemption=1 / events 为数组 → 400；tests/apiValidation.test.js 6 个非法 payload 用例；抵押超额由引擎 AI-5 护栏 + assertPricingQuote 不变量兜底 |
+| BE-8 | 输出 `quote_hash` / `evidence_hash`，供合约 oracle 使用 | Bowen | Done | `npm run test` | src/core/oracle.js `toOracleUpdate`（issue_price/risk/action/offering_state + evidence_hash + quote_hash + supply/target，对齐 RiskPricingOracle.updatePricing / RWAOfferingPool.createOffering）；POST /api/oracle/pricing-update；tests/oracle.test.js + smoke 覆盖 |
+| BE-9 | 保持原有 `/api/health`、`/api/demo-data`、`/api/risk/analyze`、`/api/workflow/simulate` 可用 | Bowen | Done | `npm run smoke` | 四个 legacy 端点全部保留并未改动语义；scripts/smoke.mjs 现显式覆盖 health/demo-data/risk-analyze/workflow-simulate；`npm run smoke` 通过 |
+| BE-10 | 集成最终 demo CLI：打印 RWA price、investor yield、risk factors | Bowen | Done | `npm run demo` | scripts/demo.mjs 打印 RWA issue price / investor yield / risk factors / 融资成本 + 链上 oracle hashes + AI 叙述；src/agent/pricingNarrator.js（确定性优先，可选 LLM 润色出错自动回退）；接入 Tencent **hy3-preview**（src/agent/llm/openaiCompatClient.js，model 锁定，优先级最高）；`npm run demo` 离线 + 实测 hy3-preview 均通过 |
 
 ## 5. Frontend
 
