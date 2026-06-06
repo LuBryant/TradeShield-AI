@@ -74,52 +74,27 @@ export async function handleGeneratePricingQuote({ case_id, trade_case } = {}) {
   assertTradeCase(caseData);
 
   // ============================================================
-  // Try Bowen's pricingEngine first (new model)
+  // New model (Bowen): delegate to the canonical pricing engine.
+  //
+  // quoteFromCase is the SAME entry point the backend (/api/pricing/quote),
+  // the frontend and the offering simulator use, so the MCP tool emits the
+  // identical PricingQuote — one structured output for AI / backend / FE /
+  // contract (the P0 schema goal). Bowen's engine derives gross profit from
+  // trade_economics, risk from scoreRisk, and collateral from the AI valuation;
+  // the base issue price is the patient-money anchor (a discount to the 1.00
+  // target), NOT a flat 1.00. Only legacy scenario cases without a payout_speed
+  // fall back to the riskEngine mock below.
   // ============================================================
   const pricingEngine = await tryImportPricingEngine();
-  if (pricingEngine && caseData.financing?.payout_speed) {
+  if (pricingEngine?.quoteFromCase && caseData.financing?.payout_speed) {
     try {
-      const riskReport = calculateRisk(caseData);
-      const bl = caseData.bill_of_lading;
-      const financing = caseData.financing;
-      const market = caseData.market;
-      const insurance = caseData.insurance;
-
-      // Calculate gross profit from invoice_value - cost_of_goods
-      const invoiceValue = bl.declared_value_usd;
-      const costOfGoods = financing.cost_of_goods_usd ?? Math.round(invoiceValue * 0.75);
-      const grossProfit = invoiceValue - costOfGoods;
-
-      const engineInput = {
-        case_id: caseData.case_id,
-        bl_id: bl.bl_id,
-        payout_speed: financing.payout_speed,
-        requested_cash_usd: financing.requested_amount_usd,
-        gross_profit_usd: grossProfit,
-        cost_of_goods_usd: costOfGoods,
-        invoice_value_usd: invoiceValue,
-        ai_verified_collateral_value_usd: riskReport.verified_cargo_value_usd,
-        redemption_coverage_limit: financing.liquidation_threshold || 0.85,
-        risk_score_bps: Math.round((100 - riskReport.cargo_health_score) * 6),
-        risk_discount_bps: Math.round((100 - riskReport.cargo_health_score) * 6),
-        risk_level: riskReport.risk_level,
-        risk_factors: riskReport.detected_risks,
-        target_redemption_value_usd: 1
-      };
-
-      const quote = pricingEngine.priceRwaOffering(engineInput);
-
-      return {
-        tool: 'generate_pricing_quote',
-        result: {
-          ...quote,
-          evidence_hash: riskReport.evidence_hash,
-          investor_explanation: quote.investor_explanation || riskReport.explanation
-        }
-      };
+      const quote = pricingEngine.quoteFromCase(caseData, {
+        payout_speed: caseData.financing.payout_speed
+      });
+      return { tool: 'generate_pricing_quote', result: quote };
     } catch (err) {
-      // If pricingEngine fails, fall back to legacy mock
-      console.warn('pricingEngine failed, falling back to legacy:', err.message);
+      // If the new-model engine cannot price this case, fall back to legacy mock.
+      console.warn('quoteFromCase failed, falling back to legacy:', err.message);
     }
   }
 

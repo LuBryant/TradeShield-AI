@@ -17,6 +17,18 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '../..');
 const publicDir = path.join(rootDir, 'public');
 const dataPath = path.join(rootDir, 'data/demo-case.json');
+const casesDir = path.join(rootDir, 'data/cases');
+
+// FE-7 support: human labels + a risk-ladder ordering for the curated demo
+// cases, so the frontend scenario selector can present clean -> warning ->
+// critical without bundling case JSON. Cases not listed here still load (with a
+// derived label) so adding a *.case.json file is enough to surface it.
+const CASE_META = {
+  'CASE-EBL-2026-CU-SG-SHA': { label: 'Clean copper · Singapore → Shanghai', risk_hint: 'MEDIUM', order: 1 },
+  'CASE-EBL-2026-0001': { label: 'Copper · Shanghai → Hamburg (insurance gap)', risk_hint: 'WARNING', order: 2 },
+  'CASE-EBL-2026-OIL-SG-ULS': { label: 'Crude oil · Singapore → Ulsan', risk_hint: 'MEDIUM', order: 3 },
+  'CASE-EBL-2026-CU-SG-SHA-WARCRISIS': { label: 'Hormuz war crisis · Singapore → Shanghai', risk_hint: 'CRITICAL', order: 4 }
+};
 
 async function readJsonBody(request) {
   const chunks = [];
@@ -28,6 +40,42 @@ async function readJsonBody(request) {
 
 async function loadDemoCase() {
   return JSON.parse(await fs.readFile(dataPath, 'utf8'));
+}
+
+/**
+ * FE-7 support: load the curated trade-case catalog (demo case + data/cases/*.case.json).
+ * Returns full case objects, each annotated with a label / route / risk_hint and
+ * ordered as a risk ladder, so the frontend can drive the pricing endpoints
+ * directly. Read-only; never throws on a single bad file.
+ */
+async function loadCaseCatalog() {
+  const files = new Map(); // case_id -> case object (demo first, then data/cases)
+  const add = (data) => { if (data?.case_id && !files.has(data.case_id)) files.set(data.case_id, data); };
+
+  try { add(await loadDemoCase()); } catch { /* ignore */ }
+  try {
+    const entries = await fs.readdir(casesDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.case.json')) continue;
+      try { add(JSON.parse(await fs.readFile(path.join(casesDir, entry.name), 'utf8'))); } catch { /* skip bad file */ }
+    }
+  } catch { /* no cases dir */ }
+
+  const cases = [...files.values()].map((data) => {
+    const bl = data.bill_of_lading ?? {};
+    const meta = CASE_META[data.case_id] ?? {};
+    return {
+      case_id: data.case_id,
+      label: meta.label ?? `${bl.cargo ?? 'Trade case'} · ${bl.port_of_loading ?? '?'} → ${bl.port_of_discharge ?? '?'}`,
+      route: `${bl.port_of_loading ?? '?'} → ${bl.port_of_discharge ?? '?'}`,
+      cargo: bl.cargo ?? null,
+      risk_hint: meta.risk_hint ?? null,
+      order: meta.order ?? 99,
+      case: data
+    };
+  });
+  cases.sort((a, b) => a.order - b.order || a.case_id.localeCompare(b.case_id));
+  return cases;
 }
 
 function isRecord(value) {
@@ -159,6 +207,13 @@ export function createServer() {
 
       if (request.method === 'GET' && url.pathname === '/api/demo-data') {
         sendJson(response, 200, await loadDemoCase());
+        return;
+      }
+
+      // FE-7: curated trade-case catalog for the scenario selector (read-only).
+      if (request.method === 'GET' && url.pathname === '/api/cases') {
+        const cases = await loadCaseCatalog();
+        sendJson(response, 200, { ok: true, count: cases.length, cases });
         return;
       }
 

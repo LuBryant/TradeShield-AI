@@ -70,16 +70,16 @@ AI 的目标不是“写一段解释”，而是产出可被后端、前端和�
 
 | ID | Task | Owner | Status | Verification | Done Evidence |
 |---|---|---|---|---|---|
-| FE-1 | Exporter Financing Quote 页面：选择 FAST / BALANCED / LOW_COST | Unassigned | Todo | 手动访问 `npm run dev` | - |
-| FE-2 | Exporter 页面展示：发行价、预计到账、融资成本、推荐发行数量 | Unassigned | Todo | 手动访问 `npm run dev` | - |
-| FE-3 | Investor RWA Offering 页面：展示 issue price、target redemption、implied gross yield | Unassigned | Todo | 手动访问 `npm run dev` | - |
-| FE-4 | Investor 页面展示 AI risk factors：战争、天气、港口、保险、价格波动 | Unassigned | Todo | 手动访问 `npm run dev` | - |
-| FE-5 | AI Pricing Console：base price、urgency discount、risk discount、final price | Unassigned | Todo | 手动访问 `npm run dev` | - |
-| FE-6 | Smart Contract Timeline：Created -> Priced -> Open -> Repriced/Paused/Funded/Redeemed | Unassigned | Todo | `npm run smoke` + 手动验证 | - |
-| FE-7 | Scenario selector：一键切换 fast / balanced / high-risk | Unassigned | Todo | 手动访问 `npm run dev` | - |
-| FE-8 | Subscribe mock：投资者输入认购金额，显示获得 RWA 数量 | Unassigned | Todo | 手动访问 `npm run dev` | - |
-| FE-9 | Evidence hash / quote hash 展示 | Unassigned | Todo | 手动访问 `npm run dev` | - |
-| FE-10 | 合规提示 UI：target redemption is not guaranteed | Unassigned | Todo | 文案 review | - |
+| FE-1 | Exporter Financing Quote 页面：选择 FAST / BALANCED / LOW_COST | Bowen | Review | 手动访问 `npm run dev` | `public/index.html` #exporter-panel + topbar speed segmented control；`app.js` renderSpeedSelector/renderExporterCards 由 `POST /api/pricing/quote {compare:true}` 驱动三速对比；headless render harness 验证（3 张卡 + active 高亮 + 点击切换实时改价 0.848→0.800） |
+| FE-2 | Exporter 页面展示：发行价、预计到账、融资成本、推荐发行数量 | Bowen | Review | 手动访问 `npm run dev` | `app.js` renderExporterCards 每速展示 issue price / cash to exporter / financing cost / % of trade profit / net profit / token supply + ★AI pick(recommended_payout_speed) + exporter_explanation |
+| FE-3 | Investor RWA Offering 页面：展示 issue price、target redemption、implied gross yield | Bowen | Review | 手动访问 `npm run dev` | `app.js` renderInvestor #investor-panel：大号 issue price、$1.00 target redemption、implied gross yield badge、token supply、risk/action 徽章；headless 验证 $0.848 / supply / MEDIUM |
+| FE-4 | Investor 页面展示 AI risk factors：战争、天气、港口、保险、价格波动 | Bowen | Review | 手动访问 `npm run dev` | `format.js` rollupRiskDimensions → 6 维(war/weather/port/insurance/price/docs)带 bps + 严重度配色 + RAG intel 引用(intelCitations)；doc:Insurance 归入 Insurance 维；war-crisis 用例 5 维全亮验证 |
+| FE-5 | AI Pricing Console：base price、urgency discount、risk discount、final price | Bowen | Review | 手动访问 `npm run dev` | `app.js` renderWaterfall：$1.00 target → base anchor → −urgency → −risk → indicative → collateral floor → final 的 broken-axis 瀑布图；与 assertPricingQuote 加性不变量一致 |
+| FE-6 | Smart Contract Timeline：Created -> Priced -> Open -> Repriced/Paused/Funded/Redeemed | Bowen | Review | `npm run smoke` + 手动验证 | `app.js` renderTimeline 由 `POST /api/offering/simulate` 驱动：生命周期 stepper + 事件日志；“Simulate in-transit risk” 注入事件 → 实时 reprice/pause callout（headless 验证 0.800→0.782 Repriced）；`npm run smoke` 通过 |
+| FE-7 | Scenario selector：一键切换 fast / balanced / high-risk | Bowen | Review | 手动访问 `npm run dev` | 新增只读 `GET /api/cases`（src/app/server.js loadCaseCatalog）+ topbar 场景 segmented control；风险阶梯 clean→warning→critical 共 4 个真实 case（含 AI-10 war-crisis）；payout 速度独立切换 |
+| FE-8 | Subscribe mock：投资者输入认购金额，显示获得 RWA 数量 | Bowen | Review | 手动访问 `npm run dev` | `app.js` renderSubscribe/computeSubscription：USDC 输入 → RWA tokens + cost / target redemption / target upside / gross yield；暂停态(PAUSE/FREEZE)禁用并提示 |
+| FE-9 | Evidence hash / quote hash 展示 | Bowen | Review | 手动访问 `npm run dev` | `app.js` #oracle-panel 展示 quote_hash + evidence_hash + `updatePricing(...)`（来自 `POST /api/oracle/pricing-update`）；“Push to RiskPricingOracle” → MCP push_pricing_to_oracle 返回 PricingUpdated tx（headless 验证） |
+| FE-10 | 合规提示 UI：target redemption is not guaranteed | Bowen | Review | 文案 review | investor 面板合规框 + subscribe 脚注：“$1.00 是 target 非保本，依赖进口商付款/货物结算/保险” + “permissioned investors only” |
 
 ## 6. Web3 / Contract
 
