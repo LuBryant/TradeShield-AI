@@ -1588,6 +1588,10 @@ AI 调用工具拉了真实价格和历史成交价
 | GET | `/api/demo-data` | 返回 seed 电子提单案例 |
 | POST | `/api/risk/analyze` | 返回结构化 AI 风险报告（旧 RiskReport） |
 | POST | `/api/workflow/simulate` | 模拟主流程状态机 |
+| POST | `/api/pricing/quote` | 生成 AI PricingQuote（折价 + 额度 + 动作；空 body 用 demo case，`?compare=true` 返回三种到账速度 + 推荐） |
+| POST | `/api/offering/simulate` | 模拟 RWA 发行、认购、改价、暂停、结算（`events` 可在途中升级风险） |
+| POST | `/api/workflow/pricing-simulate` | 合并 PricingQuote + RiskReport + offering 生命周期为一次模拟 |
+| POST | `/api/oracle/pricing-update` | 返回链上 oracle 更新载荷（issue price/risk/action + quote_hash/evidence_hash） |
 | GET | `/api/scenarios` | 返回多场景回归摘要 |
 | POST | `/api/scenarios/run` | 跑单个场景 |
 
@@ -1595,8 +1599,6 @@ AI 调用工具拉了真实价格和历史成交价
 
 | Method | Path | 用途 |
 |---|---|---|
-| POST | `/api/pricing/quote` | 生成 AI PricingQuote（折价 + 额度 + 动作） |
-| POST | `/api/offering/simulate` | 模拟发行、认购、改价、暂停、结算 |
 | POST | `/api/agent/value-cargo` | 估值 + 历史同类成交价（tool calling） |
 
 POST API 的 body 可以为空。为空时会自动读取：

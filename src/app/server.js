@@ -6,6 +6,11 @@ import { calculateRisk } from '../core/riskEngine.js';
 import { runHarnessScenarios, runScenario } from '../core/scenarioRunner.js';
 import { assertRiskReport, assertTradeCase, ValidationError } from '../core/schema.js';
 import { simulateWorkflow } from '../core/workflow.js';
+import { compareSpeeds, quoteFromCase } from '../core/pricingEngine.js';
+import { simulateOffering } from '../core/offeringSimulator.js';
+import { simulatePricingWorkflow } from '../core/pricingWorkflow.js';
+import { toOracleUpdate } from '../core/oracle.js';
+import { assertPricingQuote, PAYOUT_SPEEDS } from '../core/pricingSchema.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,6 +28,80 @@ async function readJsonBody(request) {
 
 async function loadDemoCase() {
   return JSON.parse(await fs.readFile(dataPath, 'utf8'));
+}
+
+function isRecord(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+// A POST body is treated as a bare trade case when it carries a bill_of_lading
+// (legacy seed) or a case_id + financing block (new-model case). Otherwise it is
+// treated as a request wrapper:
+//   { case?, payout_speed?, requested_cash_usd?, subscription_usd?, events?, compare? }
+function looksLikeCase(value) {
+  return isRecord(value)
+    && (value.bill_of_lading !== undefined || (value.case_id !== undefined && value.financing !== undefined));
+}
+
+// BE-7: parse a caller-supplied numeric override, collecting a validation error
+// when it is present but not a valid (non-)negative number.
+function parseAmount(raw, field, errors, { allowZero = false } = {}) {
+  if (raw === undefined || raw === null || raw === '') return undefined;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || (allowZero ? n < 0 : n <= 0)) {
+    errors.push(`${field} must be a ${allowZero ? 'non-negative' : 'positive'} number`);
+    return undefined;
+  }
+  return n;
+}
+
+/**
+ * Resolve the case + pricing options for the AI-pricing endpoints from a POST
+ * body and the request URL. Empty body -> the demo case (PRD §9 convention).
+ * Query params (?payout_speed=&requested_cash_usd=&compare=) override the body.
+ * Throws ValidationError (-> HTTP 400) on malformed input (BE-7).
+ */
+async function resolvePricingRequest(body, url) {
+  const wrapper = isRecord(body) && !looksLikeCase(body) ? body : {};
+  const caseData = looksLikeCase(body) ? body : (wrapper.case ?? await loadDemoCase());
+  const q = url.searchParams;
+
+  const errors = [];
+  const payoutSpeed = q.get('payout_speed') ?? wrapper.payout_speed ?? undefined;
+  if (payoutSpeed !== undefined && payoutSpeed !== null && !PAYOUT_SPEEDS.includes(payoutSpeed)) {
+    errors.push(`payout_speed must be one of: ${PAYOUT_SPEEDS.join(', ')}`);
+  }
+  const requestedCash = parseAmount(q.get('requested_cash_usd') ?? wrapper.requested_cash_usd, 'requested_cash_usd', errors);
+  const subscription = parseAmount(q.get('subscription_usd') ?? wrapper.subscription_usd, 'subscription_usd', errors, { allowZero: true });
+
+  // target redemption value is FIXED at 1.00 in this model; reject any other.
+  const target = caseData?.financing?.target_redemption_value_usd;
+  if (target !== undefined && Number(target) !== 1) {
+    errors.push('financing.target_redemption_value_usd must be 1.00 (target redemption value is fixed)');
+  }
+  if (wrapper.events !== undefined && !Array.isArray(wrapper.events)) {
+    errors.push('events must be an array');
+  }
+  if (errors.length > 0) throw new ValidationError('Invalid pricing request', errors);
+
+  const compareRaw = q.get('compare') ?? wrapper.compare;
+  const options = {
+    payout_speed: payoutSpeed === null ? undefined : payoutSpeed,
+    requested_cash_usd: requestedCash,
+    subscription_usd: subscription,
+    events: Array.isArray(wrapper.events) ? wrapper.events : undefined,
+    compare: compareRaw === true || compareRaw === 'true',
+    pool_id: q.get('pool_id') ?? wrapper.pool_id ?? undefined
+  };
+  return { caseData, options };
+}
+
+/** Narrow the resolved options to what quoteFromCase / compareSpeeds accept. */
+function quoteOptions(options) {
+  const out = {};
+  if (options.payout_speed !== undefined) out.payout_speed = options.payout_speed;
+  if (options.requested_cash_usd !== undefined) out.requested_cash_usd = options.requested_cash_usd;
+  return out;
 }
 
 function sendJson(response, statusCode, payload) {
@@ -96,6 +175,61 @@ export function createServer() {
       if (request.method === 'POST' && url.pathname === '/api/workflow/simulate') {
         const body = await readJsonBody(request);
         sendJson(response, 200, simulateWorkflow(body ?? await loadDemoCase()));
+        return;
+      }
+
+      // BE-3: AI dynamic-pricing quote. Empty body -> demo case. `compare=true`
+      // returns all three payout speeds + a recommendation (Exporter page).
+      if (request.method === 'POST' && url.pathname === '/api/pricing/quote') {
+        const body = await readJsonBody(request);
+        const { caseData, options } = await resolvePricingRequest(body, url);
+        if (options.compare) {
+          const comparison = compareSpeeds(caseData, quoteOptions(options));
+          for (const quote of comparison.quotes) assertPricingQuote(quote, caseData);
+          sendJson(response, 200, comparison);
+        } else {
+          const quote = quoteFromCase(caseData, quoteOptions(options));
+          assertPricingQuote(quote, caseData);
+          sendJson(response, 200, quote);
+        }
+        return;
+      }
+
+      // BE-4: RWA offering lifecycle — issue, subscribe, reprice, pause, settle.
+      // Pass `events` to escalate risk mid-transit; `subscription_usd` to size demand.
+      if (request.method === 'POST' && url.pathname === '/api/offering/simulate') {
+        const body = await readJsonBody(request);
+        const { caseData, options } = await resolvePricingRequest(body, url);
+        const offering = simulateOffering(caseData, {
+          ...quoteOptions(options),
+          subscription_usd: options.subscription_usd,
+          events: options.events
+        });
+        assertPricingQuote(offering.initial_quote, caseData);
+        sendJson(response, 200, offering);
+        return;
+      }
+
+      // BE-6: merged PricingQuote + RiskReport + offering workflow simulation.
+      if (request.method === 'POST' && url.pathname === '/api/workflow/pricing-simulate') {
+        const body = await readJsonBody(request);
+        const { caseData, options } = await resolvePricingRequest(body, url);
+        sendJson(response, 200, simulatePricingWorkflow(caseData, {
+          ...quoteOptions(options),
+          subscription_usd: options.subscription_usd,
+          events: options.events
+        }));
+        return;
+      }
+
+      // BE-8: on-chain oracle update payload (quote_hash / evidence_hash + terms)
+      // for RiskPricingOracle.updatePricing / RWAOfferingPool.createOffering.
+      if (request.method === 'POST' && url.pathname === '/api/oracle/pricing-update') {
+        const body = await readJsonBody(request);
+        const { caseData, options } = await resolvePricingRequest(body, url);
+        const quote = quoteFromCase(caseData, quoteOptions(options));
+        assertPricingQuote(quote, caseData);
+        sendJson(response, 200, toOracleUpdate(quote, { pool_id: options.pool_id }));
         return;
       }
 
