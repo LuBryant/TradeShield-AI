@@ -1,6 +1,14 @@
 import fs from 'node:fs/promises';
 import { simulateWorkflow } from '../src/core/workflow.js';
 import { compareSpeeds } from '../src/core/pricingEngine.js';
+import { toOracleUpdate } from '../src/core/oracle.js';
+import { narratePricing } from '../src/agent/pricingNarrator.js';
+import { isConfigured } from '../src/agent/llm/openaiCompatClient.js';
+
+// Load .env so an AI provider (e.g. Tencent hy3-preview) can narrate the demo.
+// Optional: with no key the narrator falls back to deterministic text.
+try { process.loadEnvFile('.env'); } catch { /* no .env -> deterministic */ }
+const useLlm = !process.argv.includes('--no-llm') && isConfigured();
 
 // --- Part 1: legacy RiskReport workflow (kept for backwards-compatible demo) ---
 const data = JSON.parse(await fs.readFile('data/demo-case.json', 'utf8'));
@@ -44,4 +52,27 @@ console.log('\nInvestor explanation');
 console.log('  ' + rec.investor_explanation);
 console.log('\nExporter explanation');
 console.log('  ' + rec.exporter_explanation);
-console.log('\nEvidence hash: ' + rec.evidence_hash);
+
+// --- BE-10: final RWA summary (price / investor yield / risk factors) ---------
+console.log('\nFinal RWA offering summary');
+console.log('-'.repeat(58));
+console.log(`  RWA issue price   : ${rec.final_issue_price_usd.toFixed(2)} / token  (1.00 target redemption, not guaranteed)`);
+console.log(`  Investor yield    : ${(rec.implied_gross_yield_bps / 100).toFixed(1)}% implied gross upside`);
+console.log(`  Exporter cash now : ${usd(rec.expected_cash_to_exporter_usd)}  (financing ${usd(rec.financing_cost_usd)} = ${(rec.exporter_profit_share_bps / 100).toFixed(1)}% of profit)`);
+console.log(`  Risk              : ${rec.risk_level} (${rec.risk_score_bps}bps)  ->  action ${rec.pricing_action}`);
+console.log('  Risk factors      :');
+for (const factor of rec.risk_factors) console.log(`    - ${factor}`);
+
+// On-chain oracle payload (BE-8): what RiskPricingOracle.updatePricing would write.
+const oracle = toOracleUpdate(rec, { pool_id: 'POOL-DEMO' });
+console.log('\nOn-chain oracle update (RiskPricingOracle.updatePricing)');
+console.log('-'.repeat(58));
+console.log(`  issue_price=${oracle.issue_price_usd}  risk=${oracle.risk_level}  action=${oracle.pricing_action}  state=${oracle.offering_state}`);
+console.log(`  evidence_hash: ${oracle.evidence_hash}`);
+console.log(`  quote_hash   : ${oracle.quote_hash}`);
+
+// --- AI narrative (optional hy3-preview polish, deterministic fallback) --------
+const narrative = await narratePricing(comparison, { useLlm });
+console.log('\nAI demo narrative' + (useLlm ? ` (provider: ${narrative.provider})` : ' (deterministic — set an LLM key to narrate with hy3-preview)'));
+console.log('-'.repeat(58));
+console.log('  ' + narrative.text);

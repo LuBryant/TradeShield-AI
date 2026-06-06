@@ -1,6 +1,7 @@
 // OpenAI-compatible chat client for tool calling.
 //
 // Works with any provider that speaks the OpenAI /chat/completions schema:
+//   - Tencent    (TokenHub / Hunyuan, model hy3-preview ONLY)  Tencent_API_KEY + Tencent_BASE_URL
 //   - DeepSeek   (https://api.deepseek.com, model deepseek-chat)        DEEPSEEK_API_KEY
 //   - Qwen       (DashScope OpenAI-compatible mode, model qwen-plus)    DASHSCOPE_API_KEY
 //   - OpenAI     (https://api.openai.com/v1)                            OPENAI_API_KEY
@@ -11,6 +12,15 @@
 // should fall back to the deterministic valuation path.
 
 const PROVIDERS = {
+  tencent: {
+    // Tencent Cloud TokenHub (Hunyuan), OpenAI-compatible. ONLY hy3-preview is
+    // permitted on this account, so the model is locked and ignores LLM_MODEL.
+    baseUrl: 'https://tokenhub.tencentmaas.com/v1',
+    baseUrlEnv: 'Tencent_BASE_URL',
+    model: 'hy3-preview',
+    keyEnv: 'Tencent_API_KEY',
+    lockModel: true
+  },
   deepseek: {
     baseUrl: 'https://api.deepseek.com',
     model: 'deepseek-chat',
@@ -19,6 +29,7 @@ const PROVIDERS = {
   qwen: {
     // DashScope OpenAI-compatible endpoint.
     baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    baseUrlEnv: 'DASHSCOPE_BASE_URL',
     model: 'qwen-plus',
     keyEnv: 'DASHSCOPE_API_KEY'
   },
@@ -31,7 +42,8 @@ const PROVIDERS = {
 
 /**
  * Resolve which provider to use from the environment.
- * Priority: explicit LLM_PROVIDER / custom LLM_* > first provider whose key is set.
+ * Priority: explicit LLM_PROVIDER / custom LLM_* > first provider whose key is set
+ * (Tencent hy3-preview is first, so it wins when configured).
  * @returns {{provider:string, baseUrl:string, model:string, apiKey:string}|null}
  */
 export function resolveProvider(env = process.env) {
@@ -52,10 +64,12 @@ export function resolveProvider(env = process.env) {
     const cfg = PROVIDERS[name];
     const apiKey = env[cfg.keyEnv];
     if (apiKey) {
+      const baseUrl = (cfg.baseUrlEnv && env[cfg.baseUrlEnv]) ? env[cfg.baseUrlEnv] : cfg.baseUrl;
       return {
         provider: name,
-        baseUrl: cfg.baseUrl,
-        model: env.LLM_MODEL ?? cfg.model,
+        baseUrl: baseUrl.replace(/\/$/, ''),
+        // A lockModel provider (Tencent: only hy3-preview is allowed) never honours LLM_MODEL.
+        model: cfg.lockModel ? cfg.model : (env.LLM_MODEL ?? cfg.model),
         apiKey
       };
     }

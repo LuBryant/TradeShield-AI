@@ -53,6 +53,19 @@ test('resolveProvider selects by env key and returns null when none set', () => 
   assert.equal(resolveProvider({}), null);
 });
 
+test('resolveProvider wires Tencent hy3-preview, locks the model, and wins on tie', () => {
+  const p = resolveProvider({ Tencent_API_KEY: 'x', Tencent_BASE_URL: 'https://tokenhub.tencentmaas.com/v1/' });
+  assert.equal(p.provider, 'tencent');
+  assert.equal(p.model, 'hy3-preview');
+  assert.equal(p.baseUrl, 'https://tokenhub.tencentmaas.com/v1'); // trailing slash trimmed
+  // Only hy3-preview is allowed on this account: LLM_MODEL cannot override it.
+  assert.equal(resolveProvider({ Tencent_API_KEY: 'x', LLM_MODEL: 'hunyuan-pro' }).model, 'hy3-preview');
+  // With multiple keys set, Tencent wins (user instruction: use hy3-preview).
+  assert.equal(resolveProvider({ Tencent_API_KEY: 'x', DASHSCOPE_API_KEY: 'y' }).provider, 'tencent');
+  // qwen can still pick up a custom DashScope base URL.
+  assert.equal(resolveProvider({ DASHSCOPE_API_KEY: 'y', DASHSCOPE_BASE_URL: 'https://ds/v1' }).baseUrl, 'https://ds/v1');
+});
+
 test('AI-9: a configured LLM that errors falls back to the deterministic valuation', async () => {
   // env has a provider key, so the agent takes the LLM path; the injected chat
   // throws, exercising the deterministic fallback with no network call.
