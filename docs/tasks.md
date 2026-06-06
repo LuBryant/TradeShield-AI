@@ -53,16 +53,16 @@ AI 的目标不是“写一段解释”，而是产出可被后端、前端和�
 
 | ID | Task | Owner | Status | Verification | Done Evidence |
 |---|---|---|---|---|---|
-| BE-1 | 更新 demo case：加入 `requested_cash_usd`、`payout_speed`、`target_redemption_value_usd` | Unassigned | Todo | `npm run check` | - |
-| BE-2 | 增加 `PricingQuote` schema validator | Unassigned | Todo | `npm run test` | - |
-| BE-3 | 实现 `/api/pricing/quote` | Unassigned | Todo | `npm run smoke` | - |
-| BE-4 | 实现 `/api/offering/simulate`：发行、认购、风险改价、暂停、结算 | Unassigned | Todo | `npm run smoke` | - |
-| BE-5 | 增加 scenario fixtures：fast payout / balanced payout / high-risk repricing | Unassigned | Todo | `npm run scenarios` | - |
-| BE-6 | 把 PricingQuote 和 RiskReport 合并进 workflow simulation | Unassigned | Todo | `npm run test` | - |
-| BE-7 | API 错误输入校验：发行数量过高、价格不合法、target redemption 超抵押覆盖 | Unassigned | Todo | invalid payload test | - |
-| BE-8 | 输出 `quote_hash` / `evidence_hash`，供合约 oracle 使用 | Unassigned | Todo | `npm run test` | - |
-| BE-9 | 保持原有 `/api/health`、`/api/demo-data`、`/api/risk/analyze`、`/api/workflow/simulate` 可用 | Unassigned | Todo | `npm run smoke` | - |
-| BE-10 | 集成最终 demo CLI：打印 RWA price、investor yield、risk factors | Unassigned | Todo | `npm run demo` | - |
+| BE-1 | 更新 demo case：加入 `requested_cash_usd`、`payout_speed`、`target_redemption_value_usd` | Bowen | In Progress | `npm run check` | - |
+| BE-2 | 增加 `PricingQuote` schema validator | Bowen | In Progress | `npm run test` | - |
+| BE-3 | 实现 `/api/pricing/quote` | Bowen | In Progress | `npm run smoke` | - |
+| BE-4 | 实现 `/api/offering/simulate`：发行、认购、风险改价、暂停、结算 | Bowen | In Progress | `npm run smoke` | - |
+| BE-5 | 增加 scenario fixtures：fast payout / balanced payout / high-risk repricing | Bowen | In Progress | `npm run scenarios` | - |
+| BE-6 | 把 PricingQuote 和 RiskReport 合并进 workflow simulation | Bowen | In Progress | `npm run test` | - |
+| BE-7 | API 错误输入校验：发行数量过高、价格不合法、target redemption 超抵押覆盖 | Bowen | In Progress | invalid payload test | - |
+| BE-8 | 输出 `quote_hash` / `evidence_hash`，供合约 oracle 使用 | Bowen | In Progress | `npm run test` | - |
+| BE-9 | 保持原有 `/api/health`、`/api/demo-data`、`/api/risk/analyze`、`/api/workflow/simulate` 可用 | Bowen | In Progress | `npm run smoke` | - |
+| BE-10 | 集成最终 demo CLI：打印 RWA price、investor yield、risk factors | Bowen | In Progress | `npm run demo` | - |
 
 ## 5. Frontend
 
