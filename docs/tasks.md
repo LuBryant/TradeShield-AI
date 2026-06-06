@@ -70,16 +70,16 @@ AI 的目标不是“写一段解释”，而是产出可被后端、前端和�
 
 | ID | Task | Owner | Status | Verification | Done Evidence |
 |---|---|---|---|---|---|
-| FE-1 | Exporter Financing Quote 页面：选择 FAST / BALANCED / LOW_COST | Unassigned | Todo | 手动访问 `npm run dev` | - |
-| FE-2 | Exporter 页面展示：发行价、预计到账、融资成本、推荐发行数量 | Unassigned | Todo | 手动访问 `npm run dev` | - |
-| FE-3 | Investor RWA Offering 页面：展示 issue price、target redemption、implied gross yield | Unassigned | Todo | 手动访问 `npm run dev` | - |
-| FE-4 | Investor 页面展示 AI risk factors：战争、天气、港口、保险、价格波动 | Unassigned | Todo | 手动访问 `npm run dev` | - |
-| FE-5 | AI Pricing Console：base price、urgency discount、risk discount、final price | Unassigned | Todo | 手动访问 `npm run dev` | - |
-| FE-6 | Smart Contract Timeline：Created -> Priced -> Open -> Repriced/Paused/Funded/Redeemed | Unassigned | Todo | `npm run smoke` + 手动验证 | - |
-| FE-7 | Scenario selector：一键切换 fast / balanced / high-risk | Unassigned | Todo | 手动访问 `npm run dev` | - |
-| FE-8 | Subscribe mock：投资者输入认购金额，显示获得 RWA 数量 | Unassigned | Todo | 手动访问 `npm run dev` | - |
-| FE-9 | Evidence hash / quote hash 展示 | Unassigned | Todo | 手动访问 `npm run dev` | - |
-| FE-10 | 合规提示 UI：target redemption is not guaranteed | Unassigned | Todo | 文案 review | - |
+| FE-1 | Exporter Financing Quote 页面：选择 FAST / BALANCED / LOW_COST | Bowen | In Progress | 手动访问 `npm run dev` | - |
+| FE-2 | Exporter 页面展示：发行价、预计到账、融资成本、推荐发行数量 | Bowen | In Progress | 手动访问 `npm run dev` | - |
+| FE-3 | Investor RWA Offering 页面：展示 issue price、target redemption、implied gross yield | Bowen | In Progress | 手动访问 `npm run dev` | - |
+| FE-4 | Investor 页面展示 AI risk factors：战争、天气、港口、保险、价格波动 | Bowen | In Progress | 手动访问 `npm run dev` | - |
+| FE-5 | AI Pricing Console：base price、urgency discount、risk discount、final price | Bowen | In Progress | 手动访问 `npm run dev` | - |
+| FE-6 | Smart Contract Timeline：Created -> Priced -> Open -> Repriced/Paused/Funded/Redeemed | Bowen | In Progress | `npm run smoke` + 手动验证 | - |
+| FE-7 | Scenario selector：一键切换 fast / balanced / high-risk | Bowen | In Progress | 手动访问 `npm run dev` | - |
+| FE-8 | Subscribe mock：投资者输入认购金额，显示获得 RWA 数量 | Bowen | In Progress | 手动访问 `npm run dev` | - |
+| FE-9 | Evidence hash / quote hash 展示 | Bowen | In Progress | 手动访问 `npm run dev` | - |
+| FE-10 | 合规提示 UI：target redemption is not guaranteed | Bowen | In Progress | 文案 review | - |
 
 ## 6. Web3 / Contract
 
