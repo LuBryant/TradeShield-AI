@@ -250,22 +250,22 @@ export function priceToE6(usd) {
  * method, and any document-consistency findings.
  * @returns {Array<{tag:string, detail:string}>}
  */
-export function riskSources(quote, caseData = {}) {
+export function riskSources(quote, caseData = {}, t = (k) => k) {
   const out = [];
-  for (const c of intelCitations(quote)) out.push({ tag: 'RAG 情报', detail: c });
+  for (const c of intelCitations(quote)) out.push({ tag: t('src_rag'), detail: c });
 
   const marketSource = caseData.market?.source;
-  if (marketSource) out.push({ tag: '市场基准', detail: marketSource });
+  if (marketSource) out.push({ tag: t('src_market'), detail: marketSource });
 
   if (Number.isFinite(Number(quote?.ai_verified_collateral_value_usd))) {
     const cov = Math.round((quote.redemption_coverage_limit ?? 0.9) * 100);
-    out.push({ tag: 'AI 货值核验', detail: `落地价 × 数量，经波动率 haircut，并按 ${cov}% 兑付覆盖率封顶安全敞口` });
+    out.push({ tag: t('src_valuation'), detail: t('src_valuation_detail', { cov }) });
   }
 
   const node = (quote?.evidence_graph ?? []).find((n) => n.component === 'risk_discount');
   for (const e of node?.evidence ?? []) {
     const s = String(e);
-    if (/^doc:/i.test(s)) out.push({ tag: '单据核验', detail: s.replace(/^doc:\s*/i, '') });
+    if (/^doc:/i.test(s)) out.push({ tag: t('src_docs'), detail: s.replace(/^doc:\s*/i, '') });
   }
   return out;
 }

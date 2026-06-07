@@ -512,6 +512,7 @@ strong { color: var(--text); }
 .topbar-right { display: flex; align-items: center; gap: 12px; }
 .wallet-btn { white-space: nowrap; }
 .wallet-btn.connected { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+.lang-btn { min-width: 46px; font-weight: 700; padding-left: 12px; padding-right: 12px; }
 
 .subbar {
   position: sticky; top: 62px; z-index: 40;

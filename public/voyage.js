@@ -7,36 +7,37 @@
 // be anchored on-chain (best effort) when a wallet is connected and a pool exists.
 //
 // Self-contained: reads the shared store, drives the existing pricing endpoints,
-// and (optionally) the web3 reprice. No imports from app.js (no cycles).
+// and (optionally) the web3 reprice. UI chrome is bilingual via i18n.js.
 
 import { state, selectedQuote, liveQuote } from './store.js';
 import { $, el, clear, toast } from './dom.js';
 import * as f from './format.js';
 import * as api from './api.js';
 import * as web3 from './web3.js';
+import { t } from './i18n.js';
 
 const PLAY_MS = 60000; // wall-clock ms to play the full voyage (0 -> 100%)
 
-// In-transit event presets shown as buttons. Each accumulates onto the case's
-// existing risk so repeated clicks compound the stress (price keeps dropping).
+// In-transit event presets. Labels/descriptions are built via t() at use time so
+// they follow the current language. Risk type/severity drive the AI reprice.
 const EVENTS = [
-  { key: 'typhoon', label: '🌪 东海台风', tone: 'warn', events: [
+  { key: 'typhoon', tone: 'warn', labelKey: 'ev_typhoon_label', build: () => [
     { category: 'macro', type: 'severe_weather', region: 'East China Sea', severity: 'warning',
-      description: '台风季系统逼近，威胁卸货窗口。', source: 'mock-weather-feed (typhoon advisory)' }
+      description: t('ev_typhoon_desc'), source: 'mock-weather-feed (typhoon advisory)' }
   ] },
-  { key: 'hormuz', label: '⚔ 霍尔木兹冲突升级', tone: 'crit', events: [
+  { key: 'hormuz', tone: 'crit', labelKey: 'ev_hormuz_label', build: () => [
     { category: 'macro', type: 'war_risk', region: 'Middle East / Strait of Hormuz', severity: 'critical',
-      description: '海峡近乎关闭，金属与能源战争溢价飙升，供应路线受阻。', source: 'mock-geopolitical-feed (GDELT-style)' },
+      description: t('ev_hormuz_desc1'), source: 'mock-geopolitical-feed (GDELT-style)' },
     { category: 'macro', type: 'commodity_volatility', region: 'Global', severity: 'critical',
-      description: '大宗价格在供应冲击恐慌中剧烈波动，估值须深度 haircut。', source: 'mock-LME-desk' }
+      description: t('ev_hormuz_desc2'), source: 'mock-LME-desk' }
   ] },
-  { key: 'deviation', label: '🧭 改道绕行', tone: 'warn', events: [
+  { key: 'deviation', tone: 'warn', labelKey: 'ev_deviation_label', build: () => [
     { category: 'shipment', type: 'route_deviation', severity: 'warning',
-      description: '为避开安全警示区改道绕行，航程延长。', source: 'carrier ops bulletin (demo)' }
+      description: t('ev_deviation_desc'), source: 'carrier ops bulletin (demo)' }
   ] },
-  { key: 'insurance', label: '🛡 保险拒赔争议', tone: 'crit', events: [
+  { key: 'insurance', tone: 'crit', labelKey: 'ev_insurance_label', build: () => [
     { category: 'shipment', type: 'insurance_invalid', severity: 'critical',
-      description: '承保人援引海湾「战争除外」条款，部分拒赔，抵押覆盖塌陷。', source: 'mock-marine-underwriting-bulletin' }
+      description: t('ev_insurance_desc'), source: 'mock-marine-underwriting-bulletin' }
   ] }
 ];
 
@@ -72,7 +73,6 @@ export function renderVoyage() {
   if (!quote || !state.caseData) return;
   const bl = state.caseData.bill_of_lading ?? {};
 
-  // (Re)initialize the clock when the case changes.
   if (clock.caseId !== state.caseId) {
     clock.caseId = state.caseId;
     appliedKeys.clear();
@@ -82,6 +82,10 @@ export function renderVoyage() {
     clock.progress = initialProgress();
   }
 
+  // Refresh injected-event display objects to the current language (no re-quote;
+  // pricing depends on event type/severity, not the localized description).
+  if (appliedKeys.size) rebuildEventObjects();
+
   renderRoute(bl);
   updateShip();
   renderLive(quote);
@@ -89,7 +93,6 @@ export function renderVoyage() {
   renderCallout();
   $('#event-reset').hidden = !state.voyageInjected;
 
-  // async: lifecycle + risk feed + judge QA
   refreshLifecycle();
   refreshRiskFeed();
   if (!judgeLoaded) { judgeLoaded = true; loadJudgeQA(); }
@@ -132,34 +135,42 @@ function renderRoute(bl) {
   $('#dep-date').textContent = f.fmtDate(depDate);
   $('#arr-port').textContent = bl.port_of_discharge || '—';
   $('#arr-date').textContent = f.fmtDate(etaDate);
-  $('#voyage-sub').innerHTML =
-    `船舶 <strong>${bl.vessel || '—'}</strong>${bl.voyage_no ? ` · 航次 ${bl.voyage_no}` : ''}` +
-    `${bl.carrier ? ` · ${bl.carrier}` : ''} —— 将鼠标移到船上查看当前虚拟时间与航段。`;
+  const voyageNo = bl.voyage_no ? t('voyage_voyage_no', { no: bl.voyage_no }) : '';
+  const carrier = bl.carrier ? ` · ${bl.carrier}` : '';
+  $('#voyage-sub').innerHTML = t('voyage_sub_vessel', { vessel: bl.vessel || '—', voyage: voyageNo, carrier });
+}
+
+function waypoint(p, load, disch) {
+  if (p <= 0.02) return t('wp_at_load', { load });
+  if (p < 0.15) return t('wp_leaving', { load });
+  if (p < 0.45) return t('wp_scs');
+  if (p < 0.72) return t('wp_open');
+  if (p < 0.97) return t('wp_approaching', { disch });
+  return t('wp_arrived', { disch });
 }
 
 function updateShip() {
   const p = clock.progress;
   const bl = state.caseData?.bill_of_lading ?? {};
-  const leftPct = 2 + p * 96; // keep within the rail ends
   const ship = $('#ship');
-  if (ship) ship.style.left = leftPct + '%';
+  if (ship) ship.style.left = (2 + p * 96) + '%';
   const fill = $('#rail-progress');
   if (fill) fill.style.width = (p * 100) + '%';
 
   const when = f.fmtDateTime(f.dateAtProgress(depDate, etaDate, p));
-  const where = f.waypointFor(p, bl.port_of_loading || '起运港', bl.port_of_discharge || '目的港');
+  const where = waypoint(p, bl.port_of_loading || '—', bl.port_of_discharge || '—');
   const tip = $('#ship-tooltip');
   if (tip) tip.textContent = `${when} · ${where}`;
   const scrub = $('#voyage-scrub');
   if (scrub && document.activeElement !== scrub) scrub.value = String(Math.round(p * 1000));
   const note = $('#voyage-eta-note');
-  if (note) note.textContent = p >= 1 ? '已抵达目的港' : `虚拟当前 ${when} · 航程 ${Math.round(p * 100)}%`;
+  if (note) note.textContent = p >= 1 ? t('eta_arrived') : t('eta_current', { when, pct: Math.round(p * 100) });
 }
 
 function togglePlay() {
   clock.playing = !clock.playing;
   clock.last = performance.now();
-  $('#voyage-play').textContent = clock.playing ? '⏸ 暂停' : '▶ 播放';
+  $('#voyage-play').textContent = clock.playing ? t('pause_label') : t('play_label');
 }
 
 // ===========================================================================
@@ -171,7 +182,7 @@ function renderLive(quote) {
   if (lastShownPrice != null && Math.abs(p - lastShownPrice) > 1e-6) {
     const dir = p < lastShownPrice ? 'flash-down' : 'flash-up';
     priceEl.classList.remove('flash-down', 'flash-up');
-    void priceEl.offsetWidth; // restart animation
+    void priceEl.offsetWidth;
     priceEl.classList.add(dir);
     setTimeout(() => priceEl.classList.remove(dir), 1200);
   }
@@ -182,7 +193,7 @@ function renderLive(quote) {
   const actEl = $('#live-action');
   actEl.textContent = `${act.icon} ${act.label}`;
   actEl.className = `badge tone-${act.tone}`;
-  $('#live-yield').innerHTML = `<strong>${f.bpsToPct(quote.implied_gross_yield_bps)}</strong> 潜在毛收益`;
+  $('#live-yield').innerHTML = `<strong>${f.bpsToPct(quote.implied_gross_yield_bps)}</strong> ${t('live_upside')}`;
 
   const riskEl = $('#live-risk');
   riskEl.textContent = quote.risk_level;
@@ -197,7 +208,6 @@ function updateFinancing() {
   if (!quote) return;
   const paused = ['PAUSE_OFFERING', 'FREEZE_POOL', 'TRIGGER_LIQUIDATION'].includes(quote.pricing_action);
   const target = quote.expected_cash_to_exporter_usd || quote.requested_cash_usd || 0;
-  // Subscription fills as the voyage proceeds; a pause caps it where it stands.
   const fill = paused ? Math.min(0.6, 0.12 + clock.progress * 0.4) : Math.min(1, 0.12 + clock.progress * 0.9);
   const raised = Math.round(target * fill);
   const bar = $('#fin-bar');
@@ -206,12 +216,21 @@ function updateFinancing() {
     bar.className = `fin-bar${paused ? ' paused' : ''}`;
   }
   const label = $('#fin-label');
-  if (label) label.textContent = `${f.usdCompact(raised)} / ${f.usdCompact(target)} · ${Math.round(fill * 100)}%${paused ? ' (已暂停)' : ''}`;
+  if (label) label.textContent = `${f.usdCompact(raised)} / ${f.usdCompact(target)} · ${Math.round(fill * 100)}%${paused ? t('fin_paused') : ''}`;
 }
 
 // ===========================================================================
 // In-transit emergency events
 // ===========================================================================
+function rebuildEventObjects() {
+  state.voyageEvents = [];
+  for (const k of appliedKeys) {
+    const def = EVENTS.find((e) => e.key === k);
+    if (def) state.voyageEvents.push(...def.build());
+  }
+  state.voyageInjected = state.voyageEvents.length > 0;
+}
+
 function renderEventButtons() {
   const box = $('#event-btns');
   clear(box);
@@ -220,18 +239,13 @@ function renderEventButtons() {
     box.append(el('button', {
       class: `event-btn tone-${ev.tone}${on ? ' active' : ''}`,
       onclick: () => toggleEvent(ev.key)
-    }, ev.label, on ? el('span', { class: 'event-on', text: '✓' }) : null));
+    }, t(ev.labelKey), on ? el('span', { class: 'event-on', text: '✓' }) : null));
   }
 }
 
 async function toggleEvent(key) {
   if (appliedKeys.has(key)) appliedKeys.delete(key); else appliedKeys.add(key);
-  state.voyageEvents = [];
-  for (const k of appliedKeys) {
-    const def = EVENTS.find((e) => e.key === k);
-    if (def) state.voyageEvents.push(...def.events);
-  }
-  state.voyageInjected = state.voyageEvents.length > 0;
+  rebuildEventObjects();
 
   try {
     if (state.voyageInjected) {
@@ -243,7 +257,7 @@ async function toggleEvent(key) {
       state.voyageOffering = null;
     }
   } catch (e) {
-    toast('重定价失败: ' + e.message, true);
+    toast(t('t_reprice_fail', { msg: e.message }), true);
     return;
   }
 
@@ -253,8 +267,6 @@ async function toggleEvent(key) {
   refreshLifecycle();
   refreshRiskFeed();
   $('#event-reset').hidden = !state.voyageInjected;
-
-  // Best-effort on-chain anchoring of the reprice (does not block the UI).
   maybeAnchorReprice();
 }
 
@@ -276,9 +288,10 @@ async function maybeAnchorReprice() {
   if (!off?.final_quote || !state.poolId || state.poolId === 'sim') return;
   if (!web3.isWalletConnected()) return;
   try {
-    const label = EVENTS.find((e) => appliedKeys.has(e.key))?.label ?? 'in-transit event';
-    const res = await web3.repriceOnChain(state.poolId, off.final_quote, label);
-    toast('⛓ 重定价已锚定上链: ' + f.shortHash(res.txHash, 10, 8));
+    const def = EVENTS.find((e) => appliedKeys.has(e.key));
+    const reason = def ? t(def.labelKey) : 'in-transit event';
+    const res = await web3.repriceOnChain(state.poolId, off.final_quote, reason);
+    toast(t('t_reprice_anchored', { hash: f.shortHash(res.txHash, 10, 8) }));
   } catch { /* best effort only */ }
 }
 
@@ -292,10 +305,15 @@ function renderCallout() {
   box.hidden = false;
   box.className = `lc-callout tone-${paused ? 'crit' : dropped ? 'warn' : 'info'}`;
   box.textContent = paused
-    ? `⏸ 在途风险升级至 ${finalQ.risk_level} —— AI 暂停了发行。新证据 ${f.shortHash(finalQ.evidence_hash)}。`
+    ? t('co_paused', { level: finalQ.risk_level, hash: f.shortHash(finalQ.evidence_hash) })
     : dropped
-      ? `↓ 风险升至 ${finalQ.risk_level} —— AI 将发行价 ${f.price(initial.final_issue_price_usd)} 重定价至 ${f.price(finalQ.final_issue_price_usd)}（投资者潜在收益扩大至 ${f.bpsToPct(finalQ.implied_gross_yield_bps)}）。`
-      : `风险重估为 ${finalQ.risk_level}；价格维持在 ${f.price(finalQ.final_issue_price_usd)}。`;
+      ? t('co_repriced', {
+          level: finalQ.risk_level,
+          a: f.price(initial.final_issue_price_usd),
+          b: f.price(finalQ.final_issue_price_usd),
+          y: f.bpsToPct(finalQ.implied_gross_yield_bps)
+        })
+      : t('co_held', { level: finalQ.risk_level, p: f.price(finalQ.final_issue_price_usd) });
 }
 
 // ===========================================================================
@@ -315,7 +333,7 @@ async function refreshLifecycle() {
   const lifecycleBox = $('#lifecycle');
   let offering;
   try { offering = await getOffering(); }
-  catch (e) { tl.innerHTML = `<li class="error">生命周期加载失败: ${e.message}</li>`; return; }
+  catch (e) { tl.innerHTML = `<li class="error">${t('lc_fail', { msg: e.message })}</li>`; return; }
 
   const reached = new Set(offering.steps.map((s) => s.state));
   const endState = offering.final_state;
@@ -360,14 +378,12 @@ async function refreshRiskFeed() {
   const box = $('#risk-feed');
   const items = [];
 
-  // 1) Injected in-transit events first (highlighted).
   for (const e of state.voyageEvents) {
     items.push({
       injected: true, severity: e.severity, category: e.type, region: e.region,
-      title: e.description, source: e.source || 'in-transit simulation', date: '刚刚 · 模拟注入'
+      title: e.description, source: e.source || 'in-transit simulation', date: t('feed_injected_date')
     });
   }
-  // 2) The case's own macro risk events (the international situation).
   for (const e of state.caseData.macro_risk_events ?? []) {
     items.push({
       severity: e.severity, category: e.type, region: e.region,
@@ -376,7 +392,6 @@ async function refreshRiskFeed() {
     });
   }
 
-  // 3) RAG sweep (sourced intel) — cached per case.
   let sweep = sweepCache.get(state.caseId);
   if (!sweep) {
     try {
@@ -393,7 +408,7 @@ async function refreshRiskFeed() {
   }
 
   clear(box);
-  if (!items.length) { box.innerHTML = '<p class="muted">暂无风险情报。</p>'; return; }
+  if (!items.length) { box.innerHTML = `<p class="muted">${t('feed_none')}</p>`; return; }
   const order = { critical: 0, warning: 1, info: 2 };
   items.sort((a, b) => (a.injected ? -1 : 0) - (b.injected ? -1 : 0) || (order[a.severity] ?? 3) - (order[b.severity] ?? 3));
 
@@ -403,11 +418,11 @@ async function refreshRiskFeed() {
         el('span', { class: `badge sm tone-${sevTone(it.severity)}`, text: (it.severity || 'info').toUpperCase() }),
         el('span', { class: 'feed-cat', text: (it.category || '').replace(/_/g, ' ') }),
         it.region ? el('span', { class: 'feed-region', text: it.region }) : null,
-        it.injected ? el('span', { class: 'feed-new', text: 'NEW' }) : null
+        it.injected ? el('span', { class: 'feed-new', text: t('feed_new') }) : null
       ),
       el('p', { class: 'feed-text', text: it.title || '' }),
       el('div', { class: 'feed-foot' },
-        el('span', { class: 'feed-source', text: '来源: ' + (it.source || '—') }),
+        el('span', { class: 'feed-source', text: t('feed_source') + (it.source || '—') }),
         it.date ? el('span', { class: 'feed-date', text: it.date }) : null
       )
     ));
@@ -419,18 +434,18 @@ function sevTone(sev) {
 }
 
 // ===========================================================================
-// RAG search + Judge Q&A (redistributed into View ②)
+// RAG search + Judge Q&A
 // ===========================================================================
 async function runRagSearch() {
   const query = $('#rag-query').value.trim();
   if (!query) return;
   const box = $('#rag-results');
-  box.innerHTML = '<p class="muted">搜索中…</p>';
+  box.innerHTML = `<p class="muted">${t('rag_searching')}</p>`;
   try {
     const data = await api.ragSearch(query);
     clear(box);
-    if (!data.matches?.length) { box.innerHTML = `<p class="muted">没有「${query}」的情报。</p>`; return; }
-    box.append(el('p', { class: 'results-count', text: `${data.match_count} 条情报命中` }));
+    if (!data.matches?.length) { box.innerHTML = `<p class="muted">${t('rag_none', { q: query })}</p>`; return; }
+    box.append(el('p', { class: 'results-count', text: t('rag_hits', { n: data.match_count }) }));
     for (const m of data.matches) {
       box.append(el('div', { class: `rag-entry tone-${sevTone(m.severity)}` },
         el('div', { class: 'rag-entry-head' },
@@ -461,6 +476,6 @@ async function loadJudgeQA() {
       ));
     }
   } catch (e) {
-    $('#judge-qa').textContent = 'Q&A 不可用: ' + e.message;
+    $('#judge-qa').textContent = t('qa_unavailable', { msg: e.message });
   }
 }
