@@ -5,13 +5,14 @@
 //           scores), the AI pricing waterfall, and a financing→mint module that
 //           tokenizes the eBL into RWA on real Sepolia (or a simulated fallback).
 //   View ② "航运追踪 & 实时定价" — lives in voyage.js.
-// Every number comes from the live pricing engine via the existing endpoints.
+// UI chrome is bilingual via i18n.js; the engine's own prose stays as returned.
 
 import { state, selectedQuote } from './store.js';
 import { $, el, clear, toast, setBusy } from './dom.js';
 import * as f from './format.js';
 import * as api from './api.js';
 import * as web3 from './web3.js';
+import { t, toggleLang, onLangChange, applyStaticI18n } from './i18n.js';
 import { initVoyage, renderVoyage, startVoyageClock, stopVoyageClock } from './voyage.js';
 
 const PAUSED_ACTIONS = new Set(['PAUSE_OFFERING', 'FREEZE_POOL', 'TRIGGER_LIQUIDATION']);
@@ -20,21 +21,38 @@ const PAUSED_ACTIONS = new Set(['PAUSE_OFFERING', 'FREEZE_POOL', 'TRIGGER_LIQUID
 // Boot
 // ===========================================================================
 async function boot() {
+  applyStaticI18n();
   wireStaticHandlers();
   initVoyage();
+  onLangChange(onLangChanged);
   reflectChainStatus();
   refreshWalletUi();
+  refreshLangBtn();
 
   try {
     state.cases = await api.getCases();
   } catch (e) {
-    toast('加载案例失败: ' + e.message, true);
+    toast(t('t_load_cases_fail', { msg: e.message }), true);
     return;
   }
   renderCaseSelector();
   renderSpeedSelector();
   await selectCase(state.cases[0]?.case_id);
   setView('mint');
+}
+
+// Re-apply text + re-render the active view when the language changes.
+function onLangChanged() {
+  applyStaticI18n();
+  refreshLangBtn();
+  reflectChainStatus();
+  refreshWalletUi();
+  renderCaseSelector();
+  renderSpeedSelector();
+  highlightCase();
+  highlightSpeed();
+  renderViewMint();
+  if (state.view === 'voyage') renderVoyage();
 }
 
 // ===========================================================================
@@ -63,7 +81,7 @@ async function selectCase(caseId) {
     renderViewMint();
     if (state.view === 'voyage') renderVoyage();
   } catch (e) {
-    toast('定价失败: ' + e.message, true);
+    toast(t('t_pricing_fail', { msg: e.message }), true);
   } finally {
     setBusy(false);
   }
@@ -73,7 +91,6 @@ function selectSpeed(speed) {
   if (!state.comparison?.quotes?.some((q) => q.payout_speed === speed)) return;
   state.speed = speed;
   highlightSpeed();
-  // a new speed = a new issue price; reset any in-transit reprice on the voyage.
   state.voyageInjected = false;
   state.voyageOffering = null;
   state.voyageEvents = [];
@@ -91,7 +108,6 @@ function setView(name) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// Re-render everything in View ① that depends on (case, speed).
 function renderViewMint() {
   const quote = selectedQuote();
   if (!quote) return;
@@ -133,7 +149,7 @@ function renderSpeedSelector() {
       onclick: () => selectSpeed(speed)
     },
       el('span', { class: 'seg-main', text: meta.label }),
-      el('span', { class: 'seg-hint', text: meta.sub })
+      el('span', { class: 'seg-hint', text: t('speed_' + speed + '_sub') })
     ));
   }
 }
@@ -159,11 +175,11 @@ function renderDealStrip(quote) {
   clear(strip);
   const qty = bl.quantity_mt ? `${f.int(bl.quantity_mt)} MT` : (bl.quantity_bbl ? `${f.int(bl.quantity_bbl)} bbl` : '');
   const pills = [
-    ['航线', bl.port_of_loading && bl.port_of_discharge ? `${bl.port_of_loading} → ${bl.port_of_discharge}` : '—'],
-    ['货物', bl.cargo ? `${bl.cargo}${qty ? ` · ${qty}` : ''}` : '—'],
-    ['电子提单', bl.bl_id ? `${bl.bl_id}${bl.ebl_platform ? ` · ${bl.ebl_platform}` : ''}` : '—'],
-    ['申报货值', bl.declared_value_usd ? f.usd(bl.declared_value_usd) : '—'],
-    ['AI 核验货值', f.usd(quote.ai_verified_collateral_value_usd)]
+    [t('ds_route'), bl.port_of_loading && bl.port_of_discharge ? `${bl.port_of_loading} → ${bl.port_of_discharge}` : '—'],
+    [t('ds_cargo'), bl.cargo ? `${bl.cargo}${qty ? ` · ${qty}` : ''}` : '—'],
+    [t('ds_ebl'), bl.bl_id ? `${bl.bl_id}${bl.ebl_platform ? ` · ${bl.ebl_platform}` : ''}` : '—'],
+    [t('ds_declared'), bl.declared_value_usd ? f.usd(bl.declared_value_usd) : '—'],
+    [t('ds_collateral'), f.usd(quote.ai_verified_collateral_value_usd)]
   ];
   for (const [k, v] of pills) {
     strip.append(el('span', { class: 'deal-pill' },
@@ -177,16 +193,16 @@ function renderHeroPrice(quote) {
   const box = $('#hero-price');
   clear(box);
   box.append(
-    el('span', { class: 'metric-label', text: 'AI 发行价 / RWA token' }),
+    el('span', { class: 'metric-label', text: t('hp_label') }),
     el('div', { class: 'hero-price-val' },
       el('span', { class: 'currency', text: '$' }),
       el('span', { id: 'hero-price-num', text: f.price(quote.final_issue_price_usd) })
     ),
     el('div', { class: 'hero-price-meta' },
       el('span', { class: `badge tone-${act.tone}`, text: `${act.icon} ${act.label}` }),
-      el('span', { class: 'hero-yield', html: `<strong>${f.bpsToPct(quote.implied_gross_yield_bps)}</strong> 潜在毛收益` })
+      el('span', { class: 'hero-yield', html: `<strong>${f.bpsToPct(quote.implied_gross_yield_bps)}</strong> ${t('hp_upside')}` })
     ),
-    el('div', { class: 'hero-target', html: `兑付目标 <strong>$1.00</strong> · ${f.SPEED_META[quote.payout_speed].label} 到账` })
+    el('div', { class: 'hero-target', html: t('hp_redeem', { speed: f.SPEED_META[quote.payout_speed].label }) })
   );
 }
 
@@ -204,20 +220,19 @@ function renderValuation(quote) {
   const kv = (k, v) => el('div', { class: 'cr-row' },
     el('span', { class: 'cr-k', text: k }), el('span', { class: 'cr-v', text: v }));
   rows.append(
-    kv('申报货值', bl.declared_value_usd ? f.usd(bl.declared_value_usd) : '—'),
-    kv('投保金额', ins.insured_value_usd ? f.usd(ins.insured_value_usd) : '—'),
-    kv('安全兑付敞口', f.usd(quote.max_safe_redemption_exposure_usd)),
-    kv('建议 token 供给', f.int(quote.recommended_token_supply))
+    kv(t('val_declared'), bl.declared_value_usd ? f.usd(bl.declared_value_usd) : '—'),
+    kv(t('val_insured'), ins.insured_value_usd ? f.usd(ins.insured_value_usd) : '—'),
+    kv(t('val_safe_exposure'), f.usd(quote.max_safe_redemption_exposure_usd)),
+    kv(t('val_supply'), f.int(quote.recommended_token_supply))
   );
 
-  // risk dimensions (reuse the FE-4 rollup)
   const dimsBox = $('#risk-dims');
   clear(dimsBox);
   for (const d of f.rollupRiskDimensions(quote.risk_factors)) {
     const tone = d.active ? f.bpsTone(d.bps) : 'muted';
     dimsBox.append(el('div', {
       class: `risk-dim tone-${tone}${d.active ? ' active' : ''}`,
-      title: d.factors.join('\n') || '未检测到信号'
+      title: d.factors.join('\n') || ''
     },
       el('span', { class: 'risk-dim-icon', text: d.icon }),
       el('div', { class: 'risk-dim-body' },
@@ -234,13 +249,13 @@ function renderValuation(quote) {
   clear(citeBox);
   const cites = f.intelCitations(quote);
   if (cites.length) {
-    citeBox.append(el('span', { class: 'cite-head', text: '风险折价援引 RAG 情报:' }));
+    citeBox.append(el('span', { class: 'cite-head', text: t('risk_cite_head') }));
     for (const c of cites) citeBox.append(el('span', { class: 'cite', text: c }));
   }
 
   const srcBox = $('#risk-sources');
   clear(srcBox);
-  for (const s of f.riskSources(quote, caseData)) {
+  for (const s of f.riskSources(quote, caseData, t)) {
     srcBox.append(el('div', { class: 'source-row' },
       el('span', { class: 'source-tag', text: s.tag }),
       el('span', { class: 'source-detail', text: s.detail })));
@@ -248,7 +263,7 @@ function renderValuation(quote) {
 }
 
 // ===========================================================================
-// View ① — AI Pricing Console waterfall (reused from the original)
+// View ① — AI Pricing Console waterfall
 // ===========================================================================
 function renderWaterfall(quote) {
   const wf = $('#waterfall');
@@ -267,22 +282,22 @@ function renderWaterfall(quote) {
   const pos = (v) => Math.max(0, Math.min(100, ((v - lo) / (hi - lo)) * 100));
 
   const cols = [
-    { kind: 'target', label: '目标兑付', value: 1.0, top: 1.0, bottom: lo, note: 'redemption value' },
-    { kind: 'base', label: 'Base 锚点', value: base, top: base, bottom: lo, note: 'patient-money anchor' },
-    { kind: 'down', label: '急用折价', value: -urg, top: base, bottom: speedPrice, note: `${f.SPEED_META[quote.payout_speed].label} · −${quote.urgency_discount_bps} bps` },
-    { kind: 'down', label: '风险折价', value: -risk, top: speedPrice, bottom: indicative, note: `${quote.risk_level} · −${quote.risk_discount_bps} bps` },
-    { kind: 'mid', label: '指示价', value: indicative, top: indicative, bottom: lo, note: 'profit-share price' }
+    { kind: 'target', label: t('wf_target'), value: 1.0, top: 1.0, bottom: lo, note: t('wf_note_redemption') },
+    { kind: 'base', label: t('wf_base'), value: base, top: base, bottom: lo, note: t('wf_note_anchor') },
+    { kind: 'down', label: t('wf_urgency'), value: -urg, top: base, bottom: speedPrice, note: `${f.SPEED_META[quote.payout_speed].label} · −${quote.urgency_discount_bps} bps` },
+    { kind: 'down', label: t('wf_risk'), value: -risk, top: speedPrice, bottom: indicative, note: `${quote.risk_level} · −${quote.risk_discount_bps} bps` },
+    { kind: 'mid', label: t('wf_indicative'), value: indicative, top: indicative, bottom: lo, note: t('wf_note_profit') }
   ];
   if (lifted) {
-    cols.push({ kind: 'up', label: '抵押下限', value: final - indicative, top: final, bottom: indicative, note: 'lifted to safe coverage' });
+    cols.push({ kind: 'up', label: t('wf_floor'), value: final - indicative, top: final, bottom: indicative, note: t('wf_note_floor') });
   }
-  cols.push({ kind: 'final', label: '最终发行价', value: final, top: final, bottom: lo, note: `${f.bpsToPct(quote.implied_gross_yield_bps)} 上行至 $1.00` });
+  cols.push({ kind: 'final', label: t('wf_final'), value: final, top: final, bottom: lo, note: t('wf_final_note', { pct: f.bpsToPct(quote.implied_gross_yield_bps) }) });
 
   const chart = el('div', { class: 'wf-chart' });
   const colsRow = el('div', { class: 'wf-cols' });
   const labelsRow = el('div', { class: 'wf-labels' });
   colsRow.append(el('div', { class: 'wf-target-line', style: `bottom:${pos(1.0)}%` },
-    el('span', { class: 'wf-axis-tag', text: '$1.00 目标' })));
+    el('span', { class: 'wf-axis-tag', text: t('wf_axis_target') })));
 
   for (const c of cols) {
     const isDown = c.kind === 'down';
@@ -305,12 +320,12 @@ function renderWaterfall(quote) {
   }
   chart.append(colsRow, labelsRow);
   wf.append(chart);
-  wf.append(el('p', { class: 'wf-axis-foot', text: `坐标缩放至 ${f.price(lo)}–1.00 · 绑定约束: ${quote.binding_constraint}` }));
+  wf.append(el('p', { class: 'wf-axis-foot', text: t('wf_axis_foot', { lo: f.price(lo), bc: quote.binding_constraint }) }));
   $('#console-explain').textContent = quote.exporter_explanation || '';
 }
 
 // ===========================================================================
-// View ① — Exporter speed cards (reused)
+// View ① — Exporter speed cards
 // ===========================================================================
 function renderExporterCards() {
   const box = $('#speed-cards');
@@ -328,19 +343,19 @@ function renderExporterCards() {
       el('div', { class: 'speed-card-head' },
         el('div', {},
           el('span', { class: 'speed-card-title', text: meta.label }),
-          el('span', { class: 'speed-card-sub', text: meta.sub })
+          el('span', { class: 'speed-card-sub', text: t('speed_' + q.payout_speed + '_sub') })
         ),
-        q.payout_speed === rec ? el('span', { class: 'rec-badge', text: '★ AI 推荐' }) : null
+        q.payout_speed === rec ? el('span', { class: 'rec-badge', text: t('ec_aipick') }) : null
       ),
       el('div', { class: 'speed-card-price' },
         el('span', { class: 'big', text: `$${f.price(q.final_issue_price_usd)}` }),
-        el('span', { class: 'unit', text: '/ token' })
+        el('span', { class: 'unit', text: t('unit_per_token') })
       ),
       el('div', { class: 'speed-card-rows' },
-        kvRow('到账现金', f.usd(q.expected_cash_to_exporter_usd)),
-        kvRow('融资成本', f.usd(q.financing_cost_usd), 'cost'),
-        kvRow('占贸易毛利', f.bpsToPct(q.exporter_profit_share_bps), shareTone(q)),
-        kvRow('保留净利', f.usd(q.exporter_net_profit_usd), 'gain')
+        kvRow(t('ec_cash'), f.usd(q.expected_cash_to_exporter_usd)),
+        kvRow(t('ec_cost'), f.usd(q.financing_cost_usd), 'cost'),
+        kvRow(t('ec_share'), f.bpsToPct(q.exporter_profit_share_bps), shareTone(q)),
+        kvRow(t('ec_net'), f.usd(q.exporter_net_profit_usd), 'gain')
       ),
       el('div', { class: 'speed-card-foot' },
         el('span', { class: `badge sm tone-${act.tone}`, text: act.label })
@@ -374,18 +389,15 @@ function renderMintModule(quote) {
   $('#mint-btn').disabled = paused;
   renderMintReadout(quote);
 
-  // Show the last mint result (if any) for this case, else the hint.
-  if (!state.mint) {
-    $('#mint-result').innerHTML =
-      '<p class="muted">输入融资金额并点击「铸造 RWA 上链」。连接钱包且合约已部署时铸造真实 Sepolia 交易，否则走高保真模拟交易。</p>';
-  }
+  if (state.mint) renderMintResult(state.mint, quote);
+  else $('#mint-result').innerHTML = `<p class="muted">${t('mint_hint')}</p>`;
 }
 
 function renderMintReadout(quote) {
   const box = $('#mint-readout');
   const paused = PAUSED_ACTIONS.has(quote.pricing_action);
   if (paused) {
-    box.innerHTML = `<span class="sub-paused">AI 已暂停发行（${f.actionMeta(quote.pricing_action).label}）——当前风险下不开放铸造。</span>`;
+    box.innerHTML = `<span class="sub-paused">${t('mr_paused', { action: f.actionMeta(quote.pricing_action).label })}</span>`;
     return;
   }
   const financing = Number($('#mint-financing').value) || 0;
@@ -395,15 +407,16 @@ function renderMintReadout(quote) {
   const redemption = tokens * 1.0;
   clear(box);
   box.append(
-    el('div', { class: 'readout-line' }, '铸造后获得 ',
-      el('strong', { text: f.int(tokens) }), ` RWA @ $${f.price(quote.final_issue_price_usd)} / token`),
+    el('div', { class: 'readout-line' }, t('mr_receive_pre') + ' ',
+      el('strong', { text: f.int(tokens) }),
+      ' ' + t('mr_receive_post', { price: f.price(quote.final_issue_price_usd) })),
     el('div', { class: 'readout-grid' },
-      miniKv('发行价', `$${f.price(quote.final_issue_price_usd)}`),
-      miniKv('投入', f.usd(cost)),
-      miniKv('目标兑付', f.usd(redemption), 'gain'),
-      miniKv('潜在毛收益', f.bpsToPct(quote.implied_gross_yield_bps), 'gain')
+      miniKv(t('mr_price'), `$${f.price(quote.final_issue_price_usd)}`),
+      miniKv(t('mr_invest'), f.usd(cost)),
+      miniKv(t('mr_redeem'), f.usd(redemption), 'gain'),
+      miniKv(t('mr_upside'), f.bpsToPct(quote.implied_gross_yield_bps), 'gain')
     ),
-    el('div', { class: 'sub-foot muted', text: '目标兑付非保本——取决于进口商付款与货物结算。' })
+    el('div', { class: 'sub-foot muted', text: t('mr_foot') })
   );
 }
 function miniKv(k, v, tone) {
@@ -416,23 +429,21 @@ async function onMint() {
   const quote = selectedQuote();
   if (!quote || PAUSED_ACTIONS.has(quote.pricing_action)) return;
   const financing = Number($('#mint-financing').value) || 0;
-  if (financing <= 0) { toast('请输入大于 0 的融资金额', true); return; }
+  if (financing <= 0) { toast(t('t_need_financing'), true); return; }
   state.financingUsd = financing;
 
   const btn = $('#mint-btn');
   btn.disabled = true;
-  const original = btn.textContent;
-  btn.textContent = '⛓ 铸造中…';
+  btn.textContent = t('minting');
 
   try {
     const realConfigured = await web3.isRealChainConfigured();
     let res;
     if (realConfigured) {
-      // Real Sepolia path: ensure a wallet session, then mint on-chain.
       if (!web3.isWalletConnected()) {
         try { await doConnect(); }
         catch (e) {
-          if (e.code === 'NO_WALLET') { res = await fallbackSim(quote, financing, '未检测到钱包'); }
+          if (e.code === 'NO_WALLET') { res = await fallbackSim(quote, financing, t('t_no_wallet_detected')); }
           else throw e;
         }
       }
@@ -440,8 +451,8 @@ async function onMint() {
         try {
           res = await web3.mintOnChain(quote, financing);
         } catch (e) {
-          if (e.code === 'REJECTED') { toast('已取消铸造', true); return; }
-          res = await fallbackSim(quote, financing, '链上调用失败，已回退模拟：' + (e.message || ''));
+          if (e.code === 'REJECTED') { toast(t('t_cancel_mint'), true); return; }
+          res = await fallbackSim(quote, financing, t('t_chain_call_failed', { msg: e.message || '' }));
         }
       }
     } else {
@@ -451,13 +462,13 @@ async function onMint() {
     state.mint = res;
     state.poolId = res.poolId && res.poolId !== 'sim' ? res.poolId : state.poolId;
     renderMintResult(res, quote);
-    if (res.mode === 'chain') toast(`✅ 已在 Sepolia 铸造 ${f.int(res.mintedAmount)} RWA`);
-    else toast(`已生成模拟铸造交易（${f.int(res.mintedAmount)} RWA）`);
+    if (res.mode === 'chain') toast(t('t_minted_chain', { n: f.int(res.mintedAmount) }));
+    else toast(t('t_minted_sim', { n: f.int(res.mintedAmount) }));
   } catch (e) {
-    toast('铸造失败: ' + (e.message || e), true);
+    toast(t('t_mint_fail', { msg: e.message || e }), true);
   } finally {
     btn.disabled = PAUSED_ACTIONS.has(quote.pricing_action);
-    btn.textContent = original;
+    btn.textContent = t('mint_btn');
   }
 }
 
@@ -472,25 +483,24 @@ function renderMintResult(res, quote) {
   const chain = res.mode === 'chain';
   box.append(
     el('div', { class: 'mint-result-head' },
-      el('span', { class: `badge ${chain ? 'tone-ok' : 'tone-warn'}`, text: chain ? '⛓ Sepolia 链上' : '🧪 模拟交易' }),
-      el('span', { class: 'mint-minted' }, '已铸 ', el('strong', { text: f.int(res.mintedAmount) }), ' RWA')
+      el('span', { class: `badge ${chain ? 'tone-ok' : 'tone-warn'}`, text: chain ? t('res_chain') : t('res_sim') }),
+      el('span', { class: 'mint-minted' }, t('res_minted_pre') + ' ', el('strong', { text: f.int(res.mintedAmount) }), ' ' + t('res_unit_rwa'))
     ),
     el('div', { class: 'mint-result-rows' },
-      mintRow('发行价', `$${f.price(quote.final_issue_price_usd)} / token`),
-      mintRow('tx_hash', f.shortHash(res.txHash, 12, 10),
-        chain && res.explorerUrl ? res.explorerUrl : null),
+      mintRow(t('res_price'), `$${f.price(quote.final_issue_price_usd)} ${t('unit_per_token')}`),
+      mintRow('tx_hash', f.shortHash(res.txHash, 12, 10), chain && res.explorerUrl ? res.explorerUrl : null),
       res.poolId ? mintRow('poolId', String(res.poolId)) : null,
       res.blockNumber ? mintRow('block', `#${f.int(res.blockNumber)}`) : null
     )
   );
   if (chain) {
-    const balRow = mintRow('链上 RWA 余额', '读取中…');
+    const balRow = mintRow(t('res_balance'), t('res_reading'));
     box.append(balRow);
     web3.readBalance(res.poolId, res.address)
       .then((bal) => { balRow.querySelector('.mint-row-v').textContent = f.int(bal); })
       .catch(() => { balRow.querySelector('.mint-row-v').textContent = '—'; });
   } else {
-    box.append(el('p', { class: 'sub-foot muted', text: '运行 `npm run deploy:tradeshield:sepolia` 并连接钱包后，此处将是真实 Sepolia 交易。' }));
+    box.append(el('p', { class: 'sub-foot muted', text: t('res_sim_foot') }));
   }
 }
 function mintRow(k, v, href) {
@@ -502,19 +512,14 @@ function mintRow(k, v, href) {
 }
 
 // ===========================================================================
-// Wallet + chain status
+// Wallet + chain status + language
 // ===========================================================================
 async function reflectChainStatus() {
   const elx = $('#chain-status');
   if (!elx) return;
   const real = await web3.isRealChainConfigured();
-  if (real) {
-    elx.textContent = '● 合约已部署 · 连接钱包铸造真实 Sepolia 交易';
-    elx.className = 'chain-status tone-ok';
-  } else {
-    elx.textContent = '○ 合约未部署 · 当前为模拟上链（运行 deploy 脚本后切真实链）';
-    elx.className = 'chain-status tone-muted';
-  }
+  elx.textContent = real ? t('chain_deployed') : t('chain_not_deployed');
+  elx.className = `chain-status tone-${real ? 'ok' : 'muted'}`;
 }
 
 function refreshWalletUi() {
@@ -525,16 +530,21 @@ function refreshWalletUi() {
     btn.textContent = `🦊 ${addr.slice(0, 6)}…${addr.slice(-4)}`;
     btn.classList.add('connected');
   } else {
-    btn.textContent = '🦊 连接钱包';
+    btn.textContent = t('wallet_connect');
     btn.classList.remove('connected');
   }
+}
+
+function refreshLangBtn() {
+  const btn = $('#lang-btn');
+  if (btn) btn.textContent = t('lang_switch_to');
 }
 
 async function doConnect() {
   const { address } = await web3.connectWallet();
   state.wallet = { address };
   refreshWalletUi();
-  toast('钱包已连接 · Sepolia');
+  toast(t('t_wallet_connected'));
   return address;
 }
 
@@ -542,9 +552,9 @@ async function onWalletClick() {
   try {
     await doConnect();
   } catch (e) {
-    if (e.code === 'NO_WALLET') toast('未检测到 MetaMask —— 铸造将走模拟交易', true);
-    else if (e.code === 'REJECTED') toast('已取消连接', true);
-    else toast('连接失败: ' + (e.message || e), true);
+    if (e.code === 'NO_WALLET') toast(t('t_no_wallet_sim'), true);
+    else if (e.code === 'REJECTED') toast(t('t_connect_cancel'), true);
+    else toast(t('t_connect_fail', { msg: e.message || e }), true);
   }
 }
 
@@ -554,6 +564,7 @@ async function onWalletClick() {
 function wireStaticHandlers() {
   document.querySelectorAll('#nav .nav-tab').forEach((b) =>
     b.addEventListener('click', () => setView(b.dataset.view)));
+  $('#lang-btn').addEventListener('click', () => toggleLang());
   $('#wallet-btn').addEventListener('click', onWalletClick);
   $('#mint-btn').addEventListener('click', onMint);
   $('#mint-financing').addEventListener('input', () => {
