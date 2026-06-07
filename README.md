@@ -260,16 +260,6 @@ npm run dev    # 启动前端
 | 3 | **突发事件模拟（Demo）** | 🌪 台风 / ⚔ 霍尔木兹冲突升级 / 🧭 改道 / 🛡 保险拒赔 等按钮，点击后 AI **实时重定价或暂停**，价格可见变化；下方是合约生命周期时间线 |
 | 4 | **AI 风险情报（含来源）& 评委问答** | AI 收集的宏观/地缘风险事件，每条标注信息来源；可搜索 RAG 知识库；右侧评委问答 |
 
-### 🎬 60 秒现场演示动线
-
-```text
-界面①：选 "Clean copper" → 看货值/风险来源 → 看瀑布图 → 输入融资额、连钱包、铸造上链（真实 Sepolia tx）
-界面②：切到航运追踪 → 船在动、悬停看虚拟时间 → 点「霍尔木兹冲突升级」→ RWA 价格当场下跌、风险飙红、AI 暂停
-        → 切 "Hormuz war crisis" 案例对照：开盘即 CRITICAL / PAUSE
-```
-
-> 🦊 **真实上链**：在根目录 `.env` 填 `SEPOLIA_RPC_URL` 与 `DEPLOYER_PRIVATE_KEY` 后，`cd hardhat && npm run deploy:tradeshield:sepolia` 会部署 `TradeShieldRWA` 并把地址自动写入 `public/chain-config.json`；之后界面①连接 MetaMask（Sepolia）即可铸造真实交易。未部署时全程走模拟兜底，演示不依赖网络。
-
 ---
 
 ## ⌨️ 命令行工具
@@ -429,33 +419,6 @@ TradeShield-AI/
 
 ---
 
-## 🎬 3 分钟 Demo 脚本
-
-```text
-[0:00] 痛点
-   "货已装船、钱要 45 天后才到。出口商要现金，投资者要有抵押的短期收益资产。"
-
-[0:30] 出口商侧（顶部选 Clean copper，看 Exporter + 瀑布）
-   "出口商质押电子提单。AI 读了货值、单据、宏观风险，按他想要的到账速度，
-    从 $1.00 目标兑付价一步步折出发行价 —— 这折价就是他的融资成本，
-    而且只让出他可验证毛利的一部分。"
-
-[1:15] 投资者侧（看 Investor + Risk Factors + 认购）
-   "投资者花 $0.85 买入、目标 $1.00 赎回，潜在收益一目了然。
-    旁边五维风险（战争/天气/港口/保险/价格）解释了为什么是这个价，
-    每条都挂着 RAG 情报来源。这是 target，不是保本。"
-
-[2:00] AI 实时风控（点 Simulate in-transit risk / 切 Hormuz war crisis）
-   "运输途中霍尔木兹局势升级、铜价剧烈波动 —— AI 立刻改价、甚至暂停发行，
-    保护投资者。"
-
-[2:30] 上链（点 Push to RiskPricingOracle）
-   "每一次定价决策连同证据哈希写进 RiskPricingOracle，
-    可审计、防篡改。AI 定价，链上执行。"
-```
-
----
-
 ## ✅ 验证矩阵
 
 | 命令 | 验证什么 | 现状 |
@@ -477,7 +440,6 @@ TradeShield-AI/
 ## 📚 更多文档
 
 - [`基础说明.md`](./基础说明.md) — 团队协作规范、新手上手、Harness 背景、领任务 / 开分支 / 提 PR 全流程
-- [`docs/PRD.md`](./docs/PRD.md) — 产品需求与定价模型 v0.2
 - [`docs/background.md`](./docs/background.md) — eBL / RWA / 贸易融资领域背景
 - [`docs/contracts.md`](./docs/contracts.md) — 合约接口冻结设计
 - [`docs/tasks.md`](./docs/tasks.md) — 任务拆分与状态
