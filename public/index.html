@@ -213,22 +213,16 @@
 
         <section class="panel" id="intel-panel">
           <div class="panel-head">
-            <h2><span class="seq">4</span> <span data-i18n="vp4_h">AI 风险情报（含来源）&amp; 评委问答</span></h2>
-            <p class="panel-sub" data-i18n="vp4_sub">AI 收集的宏观/地缘风险事件，每条标注信息来源；右侧为评委问答。</p>
+            <h2><span class="seq">4</span> <span data-i18n="vp4_h">AI 风险情报（含来源）</span></h2>
+            <p class="panel-sub" data-i18n="vp4_sub">AI 收集的宏观/地缘风险事件，每条标注信息来源；可搜索 RAG 知识库。</p>
           </div>
-          <div class="intel-grid">
-            <div class="card">
-              <div id="risk-feed" class="risk-feed"><p class="muted" data-i18n="feed_loading">加载中…</p></div>
-              <div class="search-bar">
-                <input id="rag-query" data-i18n-ph="rag_ph" placeholder='搜索情报…' />
-                <button id="rag-search-btn" class="btn" data-i18n="rag_btn">搜索</button>
-              </div>
-              <div id="rag-results" class="rag-results"></div>
+          <div class="card">
+            <div id="risk-feed" class="risk-feed"><p class="muted" data-i18n="feed_loading">加载中…</p></div>
+            <div class="search-bar">
+              <input id="rag-query" data-i18n-ph="rag_ph" placeholder='搜索情报…' />
+              <button id="rag-search-btn" class="btn" data-i18n="rag_btn">搜索</button>
             </div>
-            <div class="card">
-              <h3 class="card-head-line" data-i18n="judge_h">评委问答 Judge Q&amp;A</h3>
-              <div id="judge-qa" class="judge-qa" data-i18n="feed_loading">加载中…</div>
-            </div>
+            <div id="rag-results" class="rag-results"></div>
           </div>
         </section>
       </section>

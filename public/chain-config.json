@@ -4,10 +4,10 @@
   "chainIdDecimal": 11155111,
   "explorerBase": "https://sepolia.etherscan.io",
   "contracts": {
-    "TradeShieldRWA": "0xeBB60E56743A23C22B20D43AA93c0E7Fd80967f2"
+    "TradeShieldRWA": "0x7442eE8fC2a30bb3bc3AdBd540232cEFAE482025"
   },
-  "deployedAt": "2026-06-07T00:31:47.694Z",
-  "deployTx": "0x5c9d7c04386f804006615ca048ef22aa2550a7a6e7b4d3a5592cfa31edcd00af",
+  "deployedAt": "2026-06-07T02:44:22.047Z",
+  "deployTx": "0xa6388fe7cc23b321c774d5fe409aaa2fbe587babaeeb9c27e123923aac3ac0a2",
   "abi": [
     {
       "anonymous": false,

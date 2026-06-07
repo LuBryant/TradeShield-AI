@@ -183,8 +183,8 @@ const DICT = {
     vp3_sub: '点击模拟航运途中发生的突发事件，观察 AI 如何重定价 RWA。',
     reset_btn: '↺ 重置航程',
 
-    vp4_h: 'AI 风险情报（含来源）& 评委问答',
-    vp4_sub: 'AI 收集的宏观/地缘风险事件，每条标注信息来源；右侧为评委问答。',
+    vp4_h: 'AI 风险情报（含来源）',
+    vp4_sub: 'AI 收集的宏观/地缘风险事件，每条标注信息来源；可搜索 RAG 知识库。',
     judge_h: '评委问答 Judge Q&A',
     rag_ph: '搜索情报："Strait of Hormuz"、"copper volatility"、"Yangshan"…',
     rag_btn: '搜索', rag_searching: '搜索中…', rag_none: '没有「{q}」的情报。', rag_hits: '{n} 条情报命中',
@@ -335,8 +335,8 @@ const DICT = {
     vp3_sub: 'Click to simulate an in-transit incident and watch the AI reprice the RWA.',
     reset_btn: '↺ Reset voyage',
 
-    vp4_h: 'AI Risk Intelligence (sourced) & Judge Q&A',
-    vp4_sub: 'Macro / geopolitical risk events the AI collected, each tagged with its source; Judge Q&A on the right.',
+    vp4_h: 'AI Risk Intelligence (sourced)',
+    vp4_sub: 'Macro / geopolitical risk events the AI collected, each tagged with its source; search the RAG knowledge base.',
     judge_h: 'Judge Q&A',
     rag_ph: 'Search intel: “Strait of Hormuz”, “copper volatility”, “Yangshan”…',
     rag_btn: 'Search', rag_searching: 'Searching…', rag_none: 'No intel for “{q}”.', rag_hits: '{n} intel hits',

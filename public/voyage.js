@@ -3,17 +3,16 @@
 // A ship moves along the route on a VIRTUAL clock (departure -> ETA). Below it,
 // the live RWA price + financing progress + AI risk events (with sources) update
 // in real time, and "emergency event" buttons inject in-transit risk that makes
-// the AI reprice (or pause) the offering — the price visibly moves. Reprices can
-// be anchored on-chain (best effort) when a wallet is connected and a pool exists.
+// the AI reprice (or pause) the offering — the price visibly moves.
 //
-// Self-contained: reads the shared store, drives the existing pricing endpoints,
-// and (optionally) the web3 reprice. UI chrome is bilingual via i18n.js.
+// Self-contained: reads the shared store and drives the existing pricing
+// endpoints. The event buttons are a pure pricing demo (no wallet interaction).
+// UI chrome is bilingual via i18n.js.
 
 import { state, selectedQuote, liveQuote } from './store.js';
 import { $, el, clear, toast } from './dom.js';
 import * as f from './format.js';
 import * as api from './api.js';
-import * as web3 from './web3.js';
 import { t } from './i18n.js';
 
 const PLAY_MS = 60000; // wall-clock ms to play the full voyage (0 -> 100%)
@@ -45,10 +44,10 @@ const EVENTS = [
 const clock = { raf: 0, playing: true, progress: 0, last: 0, caseId: null };
 let depDate = null, etaDate = null;
 let lastShownPrice = null;
+let pausedFill = null; // frozen subscription fill (0..1) while the offering is paused
 const appliedKeys = new Set();
 const sweepCache = new Map();      // caseId -> sweep results array
 const baselineCache = new Map();   // `${caseId}|${speed}` -> offering
-let judgeLoaded = false;
 let wired = false;
 
 // ===========================================================================
@@ -77,6 +76,7 @@ export function renderVoyage() {
     clock.caseId = state.caseId;
     appliedKeys.clear();
     lastShownPrice = null;
+    pausedFill = null;
     depDate = f.parseDate(bl.shipped_on_board || bl.issue_date);
     etaDate = f.parseDate(bl.eta);
     clock.progress = initialProgress();
@@ -95,7 +95,6 @@ export function renderVoyage() {
 
   refreshLifecycle();
   refreshRiskFeed();
-  if (!judgeLoaded) { judgeLoaded = true; loadJudgeQA(); }
 }
 
 export function startVoyageClock() {
@@ -208,7 +207,16 @@ function updateFinancing() {
   if (!quote) return;
   const paused = ['PAUSE_OFFERING', 'FREEZE_POOL', 'TRIGGER_LIQUIDATION'].includes(quote.pricing_action);
   const target = quote.expected_cash_to_exporter_usd || quote.requested_cash_usd || 0;
-  const fill = paused ? Math.min(0.6, 0.12 + clock.progress * 0.4) : Math.min(1, 0.12 + clock.progress * 0.9);
+  let fill;
+  if (paused) {
+    // The AI paused the offering — FREEZE subscription where it stood (the ship
+    // keeps sailing, but no new capital is taken in).
+    if (pausedFill == null) pausedFill = Math.min(1, 0.12 + clock.progress * 0.9);
+    fill = pausedFill;
+  } else {
+    pausedFill = null;
+    fill = Math.min(1, 0.12 + clock.progress * 0.9);
+  }
   const raised = Math.round(target * fill);
   const bar = $('#fin-bar');
   if (bar) {
@@ -267,7 +275,6 @@ async function toggleEvent(key) {
   refreshLifecycle();
   refreshRiskFeed();
   $('#event-reset').hidden = !state.voyageInjected;
-  maybeAnchorReprice();
 }
 
 function resetVoyage() {
@@ -281,18 +288,6 @@ function resetVoyage() {
   refreshLifecycle();
   refreshRiskFeed();
   $('#event-reset').hidden = true;
-}
-
-async function maybeAnchorReprice() {
-  const off = state.voyageOffering;
-  if (!off?.final_quote || !state.poolId || state.poolId === 'sim') return;
-  if (!web3.isWalletConnected()) return;
-  try {
-    const def = EVENTS.find((e) => appliedKeys.has(e.key));
-    const reason = def ? t(def.labelKey) : 'in-transit event';
-    const res = await web3.repriceOnChain(state.poolId, off.final_quote, reason);
-    toast(t('t_reprice_anchored', { hash: f.shortHash(res.txHash, 10, 8) }));
-  } catch { /* best effort only */ }
 }
 
 function renderCallout() {
@@ -434,7 +429,7 @@ function sevTone(sev) {
 }
 
 // ===========================================================================
-// RAG search + Judge Q&A
+// RAG search
 // ===========================================================================
 async function runRagSearch() {
   const query = $('#rag-query').value.trim();
@@ -460,22 +455,5 @@ async function runRagSearch() {
     }
   } catch (e) {
     box.innerHTML = `<p class="error">${e.message}</p>`;
-  }
-}
-
-async function loadJudgeQA() {
-  try {
-    const pairs = await api.getJudgeQA();
-    const box = $('#judge-qa');
-    clear(box);
-    for (const p of pairs) {
-      box.append(el('details', { class: 'qa' },
-        el('summary', {}, el('strong', { text: p.id ? p.id + ': ' : '' }), p.question),
-        el('p', { class: 'qa-answer', text: p.answer }),
-        p.source ? el('p', { class: 'qa-source', text: p.source }) : null
-      ));
-    }
-  } catch (e) {
-    $('#judge-qa').textContent = t('qa_unavailable', { msg: e.message });
   }
 }
