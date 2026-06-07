@@ -693,7 +693,7 @@ Created
 → Subscribed  （认购达到目标）
 → Funded      （资金到账给出口商）
 → InTransit   （运输中，Agent 持续监控）
-→ Repaid      （进口商付款 / 出口商还款）
+→ Repaid      （进口商把货款付给出口商，出口商再还款到资金池）
 → Redeemed    （投资者按目标兑付价赎回 RWA）
 ```
 
@@ -707,7 +707,7 @@ Created
 | Subscribed | 认购达到目标发行量 |
 | Funded | 资金按发行折价到账给出口商 |
 | InTransit | 货物运输中，Agent 持续监控风险 |
-| Repaid | 进口商付款，合约收到回款 |
+| Repaid | 进口商把货款付给出口商；出口商还款到资金池，pool 收到回款（无 L/C、非银行，我们只持有质押的 eBL） |
 | Redeemed | 投资者按目标兑付价赎回 |
 
 ### 11.2 异常路径

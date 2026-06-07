@@ -81,3 +81,8 @@ export async function getJudgeQA() {
   const data = await fetchJson('/api/rag/judge-qa');
   return data.pairs ?? [];
 }
+
+/** RAG: full sourced risk sweep for a case (route/weather/war/port/price/fx/buyer). */
+export function riskSweep(caseData) {
+  return postJson('/api/rag/risk-sweep', caseData);
+}

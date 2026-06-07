@@ -171,3 +171,101 @@ export function intelCitations(quote) {
   }
   return [...cites];
 }
+
+// ===========================================================================
+// Voyage view (View ②) + on-chain helpers
+// ===========================================================================
+
+/** Parse an ISO-ish date string ("2026-06-03") to a Date; null if invalid. */
+export function parseDate(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(+d) ? null : d;
+}
+
+/** "2026-06-03". */
+export function fmtDate(date) {
+  const d = date instanceof Date ? date : parseDate(date);
+  if (!d) return '—';
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}`;
+}
+
+/** "2026-06-09 14:32" — used for the ship's interpolated virtual time. */
+export function fmtDateTime(date) {
+  const d = date instanceof Date ? date : parseDate(date);
+  if (!d) return '—';
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
+}
+
+/** Fraction 0..1 of the voyage elapsed at `now` between departure and ETA. */
+export function voyageProgress(dep, eta, now) {
+  const d = +dep, e = +eta, n = +now;
+  if (!Number.isFinite(d) || !Number.isFinite(e) || e <= d) return 0;
+  return Math.max(0, Math.min(1, (n - d) / (e - d)));
+}
+
+/** Interpolate the virtual Date at a given progress fraction. */
+export function dateAtProgress(dep, eta, p) {
+  const d = +dep, e = +eta;
+  if (!Number.isFinite(d) || !Number.isFinite(e)) return null;
+  return new Date(d + (e - d) * Math.max(0, Math.min(1, p)));
+}
+
+/** Human waypoint text for the ship's current progress along the route. */
+export function waypointFor(p, loadPort = '起运港', dischPort = '目的港') {
+  if (p <= 0.02) return `在 ${loadPort} 装船待发`;
+  if (p < 0.15) return `驶离 ${loadPort}`;
+  if (p < 0.45) return '航行于南海 (South China Sea)';
+  if (p < 0.72) return '航行于东海 / 公海 (open water)';
+  if (p < 0.97) return `接近 ${dischPort}`;
+  return `抵达 ${dischPort}`;
+}
+
+const RISK_LEVEL_UINT8 = { LOW: 0, MEDIUM: 1, WARNING: 2, CRITICAL: 3 };
+/** Map an AI risk_level string to the contract's uint8 code. */
+export function riskLevelToUint8(level) {
+  return RISK_LEVEL_UINT8[level] ?? 1;
+}
+
+const ACTION_UINT8 = {
+  OPEN_OFFERING: 0, OPEN_WITH_WARNING: 1, REPRICE_DOWN: 2,
+  PAUSE_OFFERING: 3, FREEZE_POOL: 4, TRIGGER_LIQUIDATION: 5
+};
+/** Map a pricing_action string to the contract's uint8 code. */
+export function actionToUint8(action) {
+  return ACTION_UINT8[action] ?? 2;
+}
+
+/** USD float -> integer USD*1e6 for the on-chain issue price (0.848 -> 848000). */
+export function priceToE6(usd) {
+  const n = Number(usd);
+  return Number.isFinite(n) ? Math.round(n * 1e6) : 0;
+}
+
+/**
+ * The data sources behind the AI's risk/valuation, for View ①'s "数据来源".
+ * Combines RAG intel citations, the market benchmark source, the valuation
+ * method, and any document-consistency findings.
+ * @returns {Array<{tag:string, detail:string}>}
+ */
+export function riskSources(quote, caseData = {}) {
+  const out = [];
+  for (const c of intelCitations(quote)) out.push({ tag: 'RAG 情报', detail: c });
+
+  const marketSource = caseData.market?.source;
+  if (marketSource) out.push({ tag: '市场基准', detail: marketSource });
+
+  if (Number.isFinite(Number(quote?.ai_verified_collateral_value_usd))) {
+    const cov = Math.round((quote.redemption_coverage_limit ?? 0.9) * 100);
+    out.push({ tag: 'AI 货值核验', detail: `落地价 × 数量，经波动率 haircut，并按 ${cov}% 兑付覆盖率封顶安全敞口` });
+  }
+
+  const node = (quote?.evidence_graph ?? []).find((n) => n.component === 'risk_discount');
+  for (const e of node?.evidence ?? []) {
+    const s = String(e);
+    if (/^doc:/i.test(s)) out.push({ tag: '单据核验', detail: s.replace(/^doc:\s*/i, '') });
+  }
+  return out;
+}

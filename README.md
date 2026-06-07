@@ -48,6 +48,46 @@ issue_price     = cash / (cash + share × P)              ← 发行价（对 $1
 
 ---
 
+## 🎯 核心逻辑链：为什么 RWA 定价非有 AI 不可
+
+> 评委最该问、也最致命的一句话：**“折价发行、目标兑付 1 美元，那投资者不就稳赚？要 AI 干嘛？”** 这一节是对它的正面回答，也是整个项目的论证主线。
+
+```text
+① RWA 折价发行：投资者按 $0.80 买入，目标兑付 $1.00
+② 陷阱：看起来买低卖高、稳赚 —— 那 AI 风控岂不是摆设？
+③ 破解：$1.00 是“目标”不是“保本” —— 会违约，投资者会亏
+④ 推论：那 $0.20 折价不是白送的利润，而是“违约风险的价格”
+⑤ 谁定这个价：AI —— 在投资者认购【之前】把链下风险折算成发行价
+⑥ 为何必须事前定准：钱在 Funded 一刻就打给出口商、货还在海上；
+   事后改价保护不了已建仓的投资者 → 折价是唯一的、预付的补偿
+⑦ AI 做三件事：保守估值(定额度) · 风险打分→折价(定价格) · 开/改价/暂停(定闸门)
+⑧ 终极考验 = 战争：价格预言机见铜价↑以为更安全；AI 知道战争溢价是
+   “相关性双刃”(违约↑ / 保险↓ / 回收↓)，于是反向 —— haircut + 暂停
+⑨ 收束：普通 DeFi 让市场猜价；TradeShield 让 AI 在下单前把风险定成折价
+```
+
+**第 ③ 步的证据 —— `npm run demo:default`（同一笔铜，三种结算）：**
+
+| 结算 | 发生了什么 | 投资者损益 |
+|---|---|---|
+| ✅ 还款 | 进口商付款，正常赎回 | 0.80 → **1.00**，**+25%** |
+| ❌ 尾部违约 | 战争致铜价崩 + 进口商弃货 + 保险战争除外拒赔 | 0.80 → 只回收 **0.698**，**−12.8%（亏损）** |
+| 🟡 轻度违约 | 进口商破产但货完好、近市价变现 | 0.80 → **1.00**，被超额抵押兜回 |
+
+→ 投资者**并非稳赚**；那笔折价正是 AI 为“违约尾部”预先收取的保费。**违约 = 进口商不付钱 → 出口商扛不住也违约 → 池子凭质押 eBL 处置货物，按比例回收 < 票面。**
+
+**第 ⑧ 步的证据 —— 战争前 vs 战争危机（定价引擎真实输出）：**
+
+| | 战争前 (warning) | 战争危机 (critical) |
+|---|---|---|
+| 风险分 | 350bps · MEDIUM | **1410bps · CRITICAL** |
+| AI 核验货值 | USD 6,531,250 | **USD 5,141,500（−21%）** |
+| AI 动作 | OPEN @0.80 | **PAUSE（拒绝开盘）** |
+
+> **一句话钉死：正因为钱打出去后无法再保护老钱，AI 在认购前那一刻的定价，就是这个项目的全部意义。** 完整的口播脚本见 [`docs/demo-script.md`](./docs/demo-script.md)。
+
+---
+
 ## 🏗️ 系统架构
 
 ```text
@@ -108,30 +148,127 @@ TradeShield Agent harness running at http://localhost:3000
 
 ---
 
+## 🛠️ 完整操作手册（每一步详细步骤）
+
+分两条路线：**A. 本地零配置演示**（推荐先跑通，走模拟上链，不需要钱包/密钥/网络）；**B. 部署到 Sepolia 真实上链**（评委现场看真实交易）。
+
+### A. 本地零配置演示（5 步）
+
+1. **装 Node** ≥ 18.18.0：`node -v` 确认。
+2. **进入项目根目录**：`cd TradeShield-AI`。
+3. **启动服务**：`npm run dev`（Windows 若报 `npm.ps1 禁止运行`，用 `npm.cmd run dev`）。
+4. **打开浏览器**：访问 `http://localhost:3000`。
+5. **照「界面操作步骤」往下玩**（见下一节）。此时顶栏会显示 `○ 合约未部署 · 当前为模拟上链`，铸造按钮产生**高保真模拟交易**——演示完整、不依赖网络。
+
+### B. 部署到 Sepolia，开启真实上链（8 步）
+
+> 目标：跑完后顶栏变 `● 合约已部署`，界面①点「铸造」会弹 MetaMask 签名、产生**真实 Sepolia 交易**。
+
+**第 1 步 · 安装 MetaMask 并开启测试网**
+浏览器装 [MetaMask](https://metamask.io) 扩展 → 新建/导入钱包 → 设置里打开「显示测试网络」→ 网络列表能看到 **Sepolia**。
+
+**第 2 步 · 新建一个「只放测试币」的钱包做部署账户**
+⚠️ 不要用有真实资产的钱包。MetaMask 里新建一个账户专门用于本 demo。
+
+**第 3 步 · 领 Sepolia 测试币（约 0.05 ETH 足够）**
+用第 2 步的地址去水龙头领取，例如：[Google Cloud Sepolia Faucet](https://cloud.google.com/application/web3/faucet/ethereum/sepolia)、[sepoliafaucet.com](https://sepoliafaucet.com)、[Alchemy Faucet](https://www.alchemy.com/faucets/ethereum-sepolia)。在 MetaMask 看到余额到账即可。
+
+**第 4 步 · 准备 RPC URL**
+免费方案任选其一：
+- 公共节点（最省事）：`https://ethereum-sepolia-rpc.publicnode.com`
+- 或注册 [Alchemy](https://www.alchemy.com) / [Infura](https://infura.io)，新建 Sepolia App，复制 HTTPS endpoint。
+
+**第 5 步 · 导出部署私钥**
+MetaMask → 选中第 2 步那个测试账户 → 账户详情 → 导出私钥（形如 `0x` 开头的 64 位十六进制）。**仅用于这个测试钱包**。
+
+**第 6 步 · 在项目根目录创建 `.env`**
+新建 `TradeShield-AI/.env`，至少填这两行（其余 LLM key 可留空，定价引擎有确定性 fallback）：
+```bash
+SEPOLIA_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
+DEPLOYER_PRIVATE_KEY=0x你第5步导出的私钥
+```
+> `.env` 已被 `.gitignore` 忽略，不会被提交。可参考 `.env.example` 里的完整字段说明。
+
+**第 7 步 · 安装合约依赖并部署**
+```bash
+cd hardhat
+npm install                          # 首次需要，安装 hardhat + ethers（约 1 分钟）
+npm run deploy:tradeshield:sepolia   # 部署 TradeShieldRWA 到 Sepolia
+```
+成功输出形如：
+```text
+TradeShieldRWA deployed at: 0xABC...123
+Wrote frontend config -> ...\public\chain-config.json
+✅ Done. ... Explorer: https://sepolia.etherscan.io/address/0xABC...123
+```
+脚本会**自动把合约地址 + ABI 写进 `public/chain-config.json`**，前端无需手改。
+
+**第 8 步 · 连接钱包并铸造真实交易**
+```bash
+cd ..          # 回到项目根目录
+npm run dev    # 启动前端
+```
+浏览器开 `http://localhost:3000` → 顶栏应显示 `● 合约已部署` → 进入**界面①** → 右上「🦊 连接钱包」（会提示切到 Sepolia，确认即可）→ 输入融资金额 → 点「⛓ 铸造 RWA 上链」→ **MetaMask 弹窗签名** → 交易上链后，结果卡显示 `tx_hash`（可点开 Etherscan）、`poolId`、链上读回的 RWA 余额。
+
+### C. 两个界面的操作步骤
+
+**界面①「提单上链 · 铸造 RWA」**
+1. 顶栏选一个**交易案例**（建议从 `Clean copper` 开始）。
+2. 看「AI 货值估算 & 航线风险」：AI 核验货值、五维风险分数、每项**数据来源**。
+3. 看「AI 定价台」瀑布图：发行价如何从 $1.00 一步步折下来。
+4. 在「融资 & 铸造」里选**到账速度**（FAST/BALANCED/LOW_COST），输入**融资金额**，下方实时显示可得 RWA 数量与发行价。
+5. 点「⛓ 铸造 RWA 上链」→ 真实交易（已部署）或模拟交易（未部署）。
+
+**界面②「航运追踪 · 实时定价」**
+1. 顶栏导航点「② 航运追踪」。
+2. 看中间的**船**沿航线移动；把鼠标移到船上，显示当前**虚拟时间 + 所在航段**；可用「⏸暂停 / 拖动条」控制。
+3. 下方「实时 RWA 定价」显示当前价、收益率、风险、认购进度。
+4. 点「突发事件」按钮（🌪台风 / ⚔霍尔木兹冲突升级 / 🧭改道 / 🛡保险拒赔）→ 观察 **RWA 价格当场下跌、风险飙红、AI 暂停**，时间线出现 Repriced/Paused。
+5. 「↺ 重置航程」回到初始定价。
+
+### D. 常见问题排查
+
+| 现象 | 原因 / 解决 |
+|---|---|
+| 顶栏一直显示「○ 合约未部署」 | 还没跑 B 路线的部署，或 `public/chain-config.json` 里 `contracts.TradeShieldRWA` 为空。重跑第 7 步。 |
+| 点连接钱包没反应 | 没装 MetaMask（会提示「铸造将走模拟交易」），装好后刷新页面。 |
+| MetaMask 报「insufficient funds」 | 部署账户没有 Sepolia 测试币，回到第 3 步领取。 |
+| `deploy` 报 `Missing SEPOLIA_RPC_URL` | `.env` 没建在**项目根目录**或字段名写错，检查第 6 步。 |
+| 铸造交易很久不确认 | Sepolia 偶尔拥堵，等待或在 MetaMask 里加速；不影响后续。 |
+| 想换合约地址 | 重跑第 7 步部署即可覆盖 `chain-config.json`。 |
+
+---
+
 ## 🖥️ 前端演示导览（推荐的看法）
 
-打开 `http://localhost:3000`，从上到下就是完整的"AI 给 RWA 定价"故事。顶部控制栏可随时切换**交易案例**和**到账速度**，下面所有数字会实时由定价引擎重算。
+打开 `http://localhost:3000`。顶部**导航栏**在两个主界面间切换，下方共享一个**交易案例 / 电子提单**选择器（4 个真实案例组成风险阶梯：clean copper MEDIUM → 铜·汉堡保险缺口 WARNING → 原油 → **霍尔木兹战争危机 CRITICAL**），所有数字都由定价引擎实时重算。
+
+### 界面 ①：提单上链 · 铸造 RWA
 
 | # | 区块 | 你能看到什么 |
 |---|---|---|
-| 🎛 | **顶部场景选择器** | 4 个真实案例组成风险阶梯：clean copper（MEDIUM，正常开盘）→ 铜·汉堡（保险缺口 WARNING）→ 原油 → **霍尔木兹战争危机（CRITICAL，AI 暂停）** |
-| 1 | **AI Pricing Console（瀑布图）** | `$1.00 目标 → base 锚点 → − 急用折价 → − 风险折价 → indicative → 抵押地板 → final` 的逐级分解 |
-| 2 | **Exporter Financing Quote** | FAST / BALANCED / LOW_COST 三张卡并排：发行价、到账现金、融资成本、让出利润占比、留存净利、发行数量，AI 推荐速度打 ★ |
-| 3 | **Investor RWA Offering** | 大号发行价 + `$1.00` 目标兑付 + implied gross yield；**认购框**（输入 USDC → 得到 RWA 数量/成本/目标收益）；**合规非保本提示** |
-| 4 | **AI Risk Factors** | 战争 / 天气 / 港口 / 保险 / 价格波动 五维风险，按 bps 与严重度上色，并标注引用的 RAG 情报来源 |
-| 5 | **Smart-Contract Lifecycle** | `Created→Priced→Open→Subscribed→Funded→InTransit→…→Redeemed` 时间线；点 **"Simulate in-transit risk"** 注入途中风险，看 AI **实时改价或暂停** |
-| 6 | **On-chain Anchoring** | `quote_hash` / `evidence_hash` + `updatePricing(...)` 调用；点 **"Push to RiskPricingOracle"** 触发 `PricingUpdated` 事件回执 |
+| 1 | **AI 货值估算 & 航线风险** | AI 核验的抵押货值 + 五维航线风险（战争/天气/港口/保险/价格波动），按 bps 与严重度上色，并列出每项的**数据来源**（RAG 情报、市场基准、估值方法、单据核验）与总风险分数 |
+| 2 | **AI 定价台（瀑布图）** | `$1.00 目标 → base 锚点 → − 急用折价 → − 风险折价 → indicative → 抵押地板 → final` 的逐级分解 |
+| 3 | **融资 & 铸造 RWA** | 选到账速度（FAST/BALANCED/LOW_COST 三卡对比）→ 输入**商家融资金额** → 实时算出可得 RWA 数量与发行价 → 点 **「⛓ 铸造 RWA 上链」**：连钱包且合约已部署时铸造**真实 Sepolia 交易**（返回 tx + Etherscan 链接 + 链上读回余额），否则走高保真模拟交易。下方锚定 `quote_hash` / `evidence_hash` |
+
+### 界面 ②：航运追踪 · 实时定价
+
+| # | 区块 | 你能看到什么 |
+|---|---|---|
+| 1 | **航运进度（虚拟时间）** | 一艘船沿航线移动的进度条，左=出发港/装船日，右=目的港/ETA；**鼠标悬停船**显示当前虚拟时间与所在航段；可播放/暂停、拖动 |
+| 2 | **实时 RWA 定价 & 认购进度** | 大号实时发行价（变化时闪动）、隐含收益率、风险等级/分数、随航程增长的认购进度条 |
+| 3 | **突发事件模拟（Demo）** | 🌪 台风 / ⚔ 霍尔木兹冲突升级 / 🧭 改道 / 🛡 保险拒赔 等按钮，点击后 AI **实时重定价或暂停**，价格可见变化；下方是合约生命周期时间线 |
+| 4 | **AI 风险情报（含来源）& 评委问答** | AI 收集的宏观/地缘风险事件，每条标注信息来源；可搜索 RAG 知识库；右侧评委问答 |
 
 ### 🎬 60 秒现场演示动线
 
 ```text
-1. 选 "Clean copper"            → 看瀑布图：AI 如何从 $1.00 一步步折到发行价
-2. 在顶部切 FAST / LOW_COST     → 价格随"急用程度"实时变化（FAST 更低、收益更高）
-3. 看 Investor 区，输入认购金额   → 立刻显示能拿到多少 RWA、目标收益
-4. 点 "Simulate in-transit risk" → AI 把价从 0.85 改到 ~0.78，时间线出现 Repriced
-5. 切到 "Hormuz war crisis"      → 风险 CRITICAL，AI 直接 PAUSE，认购被禁用
-6. 点 "Push to RiskPricingOracle" → 决策连同证据哈希上链（PricingUpdated 事件）
+界面①：选 "Clean copper" → 看货值/风险来源 → 看瀑布图 → 输入融资额、连钱包、铸造上链（真实 Sepolia tx）
+界面②：切到航运追踪 → 船在动、悬停看虚拟时间 → 点「霍尔木兹冲突升级」→ RWA 价格当场下跌、风险飙红、AI 暂停
+        → 切 "Hormuz war crisis" 案例对照：开盘即 CRITICAL / PAUSE
 ```
+
+> 🦊 **真实上链**：在根目录 `.env` 填 `SEPOLIA_RPC_URL` 与 `DEPLOYER_PRIVATE_KEY` 后，`cd hardhat && npm run deploy:tradeshield:sepolia` 会部署 `TradeShieldRWA` 并把地址自动写入 `public/chain-config.json`；之后界面①连接 MetaMask（Sepolia）即可铸造真实交易。未部署时全程走模拟兜底，演示不依赖网络。
 
 ---
 
@@ -143,6 +280,7 @@ TradeShield Agent harness running at http://localhost:3000
 |---|---|
 | `npm run dev` | 启动 Web + API 服务（`http://localhost:3000`） |
 | `npm run demo` | CLI 主流程演示：打印 RWA 发行价、investor yield、风险因子、链上哈希、AI 叙述（网页坏了的兜底方案） |
+| `npm run demo:default` | **投资者会不会亏**演示：同一笔铜跑「还款 / 尾部违约 / 轻度违约」三种结算，逐条打印投资者损益（核心逻辑链第 ③ 步） |
 | `npm run price` | 对 demo case 直接打印一份 PricingQuote |
 | `npm run scenarios` | 多场景回归：legacy RiskReport + AI 定价（fast / balanced / 途中改价 reprice / 高风险 pause） |
 | `npm run qa` | 评委 Q&A 助手彩排（用真实定价数字 + RAG 引用作答；`-- "你的问题"` 问单题） |
@@ -344,6 +482,7 @@ TradeShield-AI/
 - [`docs/contracts.md`](./docs/contracts.md) — 合约接口冻结设计
 - [`docs/tasks.md`](./docs/tasks.md) — 任务拆分与状态
 - [`docs/ai-valuation-tooling.md`](./docs/ai-valuation-tooling.md) — AI 估值 tool calling 与所需 API
+- [`docs/demo-script.md`](./docs/demo-script.md) — 视频 Demo 讲稿（口播 + 画面脚本，约 3 分 30 秒）
 
 ---
 

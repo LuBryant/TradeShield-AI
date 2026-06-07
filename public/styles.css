@@ -491,3 +491,206 @@ strong { color: var(--text); }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* ====================================================================
+   Top nav + shared sub-bar + wallet (two-view shell)
+   ==================================================================== */
+.nav { display: flex; gap: 8px; flex: 1; justify-content: center; }
+.nav-tab {
+  display: inline-flex; align-items: center; gap: 8px;
+  font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  color: var(--text-2); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 12px; padding: 9px 18px; transition: all 0.16s ease;
+}
+.nav-tab:hover { color: var(--text); border-color: #2c3a5e; transform: translateY(-1px); }
+.nav-tab.active {
+  color: var(--text); border-color: transparent;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 34%, var(--panel)), color-mix(in srgb, var(--accent-2) 20%, var(--panel)));
+  box-shadow: 0 8px 22px #1f3b7a55, inset 0 0 0 1px #4f8cff66;
+}
+.nav-num { font-size: 15px; opacity: 0.9; }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.wallet-btn { white-space: nowrap; }
+.wallet-btn.connected { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+
+.subbar {
+  position: sticky; top: 62px; z-index: 40;
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  backdrop-filter: blur(12px); border-bottom: 1px solid var(--line);
+}
+.subbar-inner {
+  width: min(1240px, 94vw); margin: 0 auto;
+  display: flex; align-items: center; gap: 14px; padding: 10px 0; flex-wrap: wrap;
+}
+.subbar-inner .control-label { white-space: nowrap; }
+.chain-status { font-size: 11px; margin-left: auto; color: var(--tone, var(--text-3)); white-space: nowrap; }
+.chain-status.tone-ok { color: var(--ok); }
+.chain-status.tone-muted { color: var(--text-3); }
+
+.view { animation: rise 0.4s ease both; }
+
+/* ====================================================================
+   View ① — valuation + sources + mint
+   ==================================================================== */
+.valuation-grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: 18px; }
+.collateral-card { display: flex; flex-direction: column; gap: 8px; }
+.collateral-val {
+  font-size: 38px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1;
+  background: linear-gradient(135deg, #fff, #8ec5ff);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.collateral-rows { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.cr-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; border-top: 1px solid var(--line-soft); padding-top: 7px; }
+.cr-k { color: var(--text-3); }
+.cr-v { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.sources-block { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.sources-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); }
+.risk-sources { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; }
+.source-row { display: flex; gap: 10px; align-items: baseline; font-size: 12px; }
+.source-tag {
+  flex-shrink: 0; min-width: 78px; text-align: center;
+  font-size: 10.5px; font-weight: 700; color: var(--violet);
+  background: #1a1535; border: 1px solid #38306a; border-radius: 7px; padding: 3px 7px;
+}
+.source-detail { color: var(--text-2); line-height: 1.5; }
+
+.speed-group { margin-bottom: 14px; }
+.mint-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 18px; }
+.mint-form { display: flex; flex-direction: column; }
+.mint-input-row { display: flex; gap: 8px; margin: 6px 0 4px; }
+#mint-financing {
+  flex: 1; background: #0a1124; border: 1px solid var(--line); border-radius: 10px;
+  padding: 11px 13px; color: var(--text); font: inherit; font-size: 15px; font-variant-numeric: tabular-nums;
+}
+#mint-financing:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px #4f8cff22; }
+#mint-financing:disabled { opacity: 0.5; }
+#mint-btn { white-space: nowrap; }
+.mint-readout { margin: 10px 0; min-height: 20px; }
+.readout-line { font-size: 14px; }
+.readout-line strong { color: var(--accent-2); font-size: 18px; font-variant-numeric: tabular-nums; }
+.readout-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 12px; }
+
+.mint-onchain { display: flex; flex-direction: column; gap: 10px; }
+.mint-result { margin-top: 6px; }
+.mint-result-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.mint-minted strong { color: var(--accent-2); font-size: 18px; font-variant-numeric: tabular-nums; }
+.mint-result-rows { display: flex; flex-direction: column; gap: 8px; }
+.mint-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 12.5px; }
+.mint-row-k { color: var(--text-3); text-transform: uppercase; font-size: 10.5px; letter-spacing: 0.04em; }
+.mint-row-v { font-family: var(--mono); font-size: 12.5px; color: var(--text); }
+.etherscan-link { color: var(--accent-2); text-decoration: none; }
+.etherscan-link:hover { text-decoration: underline; }
+
+/* ====================================================================
+   View ② — voyage tracker (ship on a track)
+   ==================================================================== */
+.voyage { display: grid; grid-template-columns: minmax(120px, auto) 1fr minmax(120px, auto); gap: 18px; align-items: center; padding: 14px 4px 26px; }
+.port { display: flex; flex-direction: column; gap: 3px; }
+.port-arr { text-align: right; }
+.port-tag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); }
+.port strong { font-size: 14px; }
+.port-date { font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+
+.voyage-rail { position: relative; height: 64px; }
+.rail-line {
+  position: absolute; top: 50%; left: 0; right: 0; height: 4px; transform: translateY(-50%);
+  border-radius: 4px;
+  background: linear-gradient(90deg, #1a2540, #233258);
+  border: 1px dashed #2c3a5e;
+}
+.rail-progress {
+  position: absolute; top: 50%; left: 0; height: 4px; transform: translateY(-50%);
+  border-radius: 4px; width: 0;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 14px #4f8cff66;
+}
+.ship {
+  position: absolute; top: 50%; left: 2%; transform: translate(-50%, -50%);
+  cursor: grab; z-index: 3; outline: none;
+}
+.ship-icon { font-size: 30px; display: block; filter: drop-shadow(0 4px 8px #000a); animation: bob 3.5s ease-in-out infinite; }
+@keyframes bob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-4px) rotate(2deg); } }
+.ship-tooltip {
+  position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%);
+  white-space: nowrap; font-size: 11.5px; font-weight: 600; color: var(--text);
+  background: #0e1730; border: 1px solid var(--accent); border-radius: 9px; padding: 7px 11px;
+  box-shadow: 0 10px 26px #000a; opacity: 0; pointer-events: none; transition: opacity 0.18s; z-index: 5;
+}
+.ship-tooltip::after {
+  content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  border: 6px solid transparent; border-top-color: var(--accent);
+}
+.ship:hover .ship-tooltip, .ship:focus .ship-tooltip { opacity: 1; }
+
+.voyage-controls { display: flex; align-items: center; gap: 14px; margin-top: 4px; }
+.btn.sm { padding: 7px 12px; font-size: 12px; }
+.scrubber { flex: 1; accent-color: var(--accent); cursor: pointer; }
+#voyage-eta-note { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ====================================================================
+   View ② — live price + financing progress
+   ==================================================================== */
+.live-grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: 18px; }
+.live-price-card { display: flex; flex-direction: column; gap: 8px; }
+.live-price { font-size: 54px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
+.live-price.flash-down { animation: flashDown 1.2s ease; }
+.live-price.flash-up { animation: flashUp 1.2s ease; }
+@keyframes flashDown { 0% { color: var(--crit); text-shadow: 0 0 26px #fb718599; transform: scale(1.06); } 100% { color: var(--text); text-shadow: none; transform: scale(1); } }
+@keyframes flashUp { 0% { color: var(--ok); text-shadow: 0 0 26px #34d39999; transform: scale(1.06); } 100% { color: var(--text); text-shadow: none; transform: scale(1); } }
+.live-meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.live-yield { font-size: 13px; color: var(--text-2); }
+.live-yield strong { color: var(--ok); }
+.live-stats { display: flex; flex-direction: column; gap: 12px; justify-content: center; }
+.live-kv { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.live-kv span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-3); }
+.live-kv strong { font-size: 14px; font-variant-numeric: tabular-nums; }
+.fin-block { margin-top: 4px; }
+.fin-head { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text-3); margin-bottom: 6px; }
+.fin-head span:last-child { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.fin-progress { height: 12px; border-radius: 999px; background: #0a1124; border: 1px solid var(--line); overflow: hidden; }
+.fin-bar { height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width 0.4s ease; }
+.fin-bar.paused { background: linear-gradient(90deg, var(--crit), #b34a63); }
+
+/* ====================================================================
+   View ② — emergency event buttons + risk feed
+   ==================================================================== */
+.event-btns { display: flex; flex-wrap: wrap; gap: 10px; }
+.event-btn {
+  font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px;
+  color: var(--text); background: var(--panel); border: 1px solid var(--line);
+  border-left: 3px solid var(--tone, var(--muted)); border-radius: 11px; padding: 9px 14px;
+  transition: all 0.16s ease;
+}
+.event-btn:hover { transform: translateY(-1px); border-color: var(--tone); box-shadow: 0 8px 20px #00000044; }
+.event-btn.active { background: color-mix(in srgb, var(--tone) 16%, var(--panel)); box-shadow: inset 0 0 0 1px var(--tone); }
+.event-on { font-size: 11px; color: var(--tone); }
+
+.risk-feed { display: flex; flex-direction: column; gap: 9px; max-height: 360px; overflow: auto; margin-bottom: 12px; }
+.feed-item { border: 1px solid var(--line); border-left: 3px solid var(--tone, var(--info)); border-radius: 11px; padding: 11px 13px; background: #0b1224; }
+.feed-item.injected { border-color: var(--crit); background: color-mix(in srgb, var(--crit) 9%, #0b1224); animation: rise 0.3s ease both; }
+.feed-head { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; flex-wrap: wrap; }
+.feed-cat { font-size: 10.5px; color: var(--text-3); background: #131c33; border-radius: 6px; padding: 2px 7px; text-transform: capitalize; }
+.feed-region { font-size: 10.5px; color: var(--text-2); }
+.feed-new { font-size: 9.5px; font-weight: 800; color: var(--crit); margin-left: auto; letter-spacing: 0.08em; }
+.feed-text { font-size: 12.5px; color: var(--text); margin: 4px 0; line-height: 1.5; }
+.feed-foot { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.feed-source { font-size: 10.5px; color: var(--violet); font-family: var(--mono); }
+.feed-date { font-size: 10.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+
+/* ====================================================================
+   Responsive (two-view additions)
+   ==================================================================== */
+@media (max-width: 980px) {
+  .valuation-grid, .mint-grid, .live-grid { grid-template-columns: 1fr; }
+  .nav { order: 3; flex-basis: 100%; }
+}
+@media (max-width: 640px) {
+  .voyage { grid-template-columns: 1fr; gap: 10px; }
+  .port-arr { text-align: left; }
+  .voyage-rail { margin: 10px 0; }
+  .readout-grid { grid-template-columns: repeat(2, 1fr); }
+  .live-price { font-size: 42px; }
+  .subbar { top: 56px; }
+}
