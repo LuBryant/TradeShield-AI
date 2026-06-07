@@ -3,8 +3,8 @@
   "chainId": 11155111,
   "deployer": "0xFf86f010D005d15bd43e1f254C12ACabEFae218d",
   "contract": "TradeShieldRWA",
-  "address": "0x48Ae3Bae7387558Cec19f5BcFDde1521567ee706",
-  "deployTx": "0xb4064d0ae0dd05d37312eafd70c9708cfb6b199ea7ca22fd9ee16c8513451434",
-  "explorer": "https://sepolia.etherscan.io/address/0x48Ae3Bae7387558Cec19f5BcFDde1521567ee706",
-  "deployedAt": "2026-06-07T03:31:24.945Z"
+  "address": "0xfCA6F1C4d4a1A1340224c111e62cE60F22623A2B",
+  "deployTx": "0x76bc6213a880c5b54664543f208e8cca28df790f1a0432afbad6d943413d0422",
+  "explorer": "https://sepolia.etherscan.io/address/0xfCA6F1C4d4a1A1340224c111e62cE60F22623A2B",
+  "deployedAt": "2026-06-07T04:04:46.961Z"
 }
