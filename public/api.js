@@ -86,3 +86,9 @@ export async function getJudgeQA() {
 export function riskSweep(caseData) {
   return postJson('/api/rag/risk-sweep', caseData);
 }
+
+/** INTEL: live real-world risk via xAPI (tweets / officials / news / prediction markets)
+ *  → structured events + signals + before/after re-priced quote. Offline-safe (fixtures w/o key). */
+export function worldRisk(caseData) {
+  return postJson('/api/intel/world-risk', { case: caseData });
+}

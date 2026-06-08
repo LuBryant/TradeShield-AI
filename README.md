@@ -9,7 +9,7 @@
 [![ETH Beijing](https://img.shields.io/badge/ETH_Beijing-2026-635BFF)](https://ethbeijing.xyz)
 [![Track](https://img.shields.io/badge/Track-AI_Agent_x_Blockchain-5A45FF)](#)
 [![Award](https://img.shields.io/badge/Award-Security_%2F_Risk_Agent-D6336C)](#)
-[![tests](https://img.shields.io/badge/tests-148_passing-2EA043)](#)
+[![tests](https://img.shields.io/badge/tests-154_passing-2EA043)](#)
 [![contracts](https://img.shields.io/badge/contracts-11_passing-2EA043)](#)
 [![Sepolia](https://img.shields.io/badge/Sepolia-Live_on--chain-2EA043)](https://sepolia.etherscan.io/address/0xfCA6F1C4d4a1A1340224c111e62cE60F22623A2B)
 [![deps](https://img.shields.io/badge/deps-zero-1F6FEB)](#)
@@ -53,7 +53,8 @@ puts an AI agent in charge of the dangerous part: **pricing real-world risk befo
 | 🧠 | **Pricing grounded in verifiable profit** | The discount isn't a hand-waved LTV. It equals the exporter's *financing cost*, taken as a **share of verified trade profit** `P = invoice − cost_of_goods`. Fully explainable. |
 | 🔭 | **It sees through deceptive signals** | When war spikes the copper price, a price oracle thinks the collateral is *safer*. The agent knows war premium is a **correlated double-edge** (default ↑, insurance void, recovery ↓) and does the opposite: haircut + **PAUSE**. |
 | 🔗 | **Grounded, tool-using, retrieval-backed** | Tool calls for live LME price, regional premium and UN Comtrade historical comparables; a RAG retriever cites macro-risk intel with sources → an auditable **evidence graph**. |
-| ⛓️ | **Live on Sepolia, with safety rails** | Every decision is anchored on-chain with `quote_hash` / `evidence_hash`. The LLM **never** sets the final price alone — a deterministic engine + schema guardrail validate it; **148 + 11 tests** guard the invariants. |
+| 🌐 | **Live real-world risk via xAPI** | Pulls X/Twitter, Google News and prediction-market (Polymarket-style) signals through [xAPI](https://xapi.to), maps them to structured risk events, and folds them into the price — *the AI prices live world events on this cargo*. No key? Offline fixtures keep the demo running. |
+| ⛓️ | **Live on Sepolia, with safety rails** | Every decision is anchored on-chain with `quote_hash` / `evidence_hash`. The LLM **never** sets the final price alone — a deterministic engine + schema guardrail validate it; **154 + 11 tests** guard the invariants. |
 
 ### 🧠 The core innovation — discount built on verifiable trade profit
 
@@ -269,8 +270,9 @@ All commands run **offline** (deterministic fallback when no API key is set).
 | `npm run qa` | Judge Q&A rehearsal (real pricing numbers + RAG citations; `-- "your question"` for one question) |
 | `npm run mcp` | Demo the MCP tool chain (get_trade_case → search → price → simulate → push oracle) |
 | `npm run agent:value` | Run the AI cargo-valuation tools (live price / historical comparables / valuation; offline fallback) |
+| `npm run intel` | **Live world-risk via xAPI**: X/Twitter + news + prediction-market signals → risk events → re-priced quote (offline fixtures with no key) |
 | `npm run check` | Low-cost self-check: files, scripts, seed data, engine integrity |
-| `npm run test` | Full unit / integration suite (`node --test`, **148 passing**) |
+| `npm run test` | Full unit / integration suite (`node --test`, **154 passing**) |
 | `npm run smoke` | Spin up a temp server and smoke-test the key APIs |
 
 > One-shot pre-demo verification:
@@ -293,6 +295,7 @@ After `npm run dev`, all endpoints are at `http://localhost:3000`. A POST with a
 | GET/POST | `/api/scenarios` · `/api/scenarios/run` | Scenario regression |
 | GET/POST | `/api/mcp/tools` · `/api/mcp/call` | MCP tool list / call |
 | POST/GET | `/api/rag/search` · `/api/rag/judge-qa` | RAG search / judge Q&A |
+| POST | `/api/intel/world-risk` | Live xAPI world-risk sweep → events + signals + before/after re-priced quote |
 
 **Compare three payout speeds:**
 ```bash
@@ -322,6 +325,7 @@ curl -s -X POST http://localhost:3000/api/offering/simulate \
 | `LLM_BASE_URL` / `LLM_API_KEY` | Any OpenAI-compatible endpoint |
 | `ALPHAVANTAGE_API_KEY` / `METALPRICE_API_KEY` | Live copper price (USD/MT) |
 | `COMTRADE_PRIMARY_KEY` | UN Comtrade historical comparables (by HS code, free) |
+| `XAPI_KEY` | [xAPI](https://xapi.to) — live world-risk signals (X/Twitter · news · prediction markets) for `npm run intel` / `/api/intel/world-risk`. Register: `npx xapi-to register` (invite `xapito`). See [`docs/xapi-integration.md`](./docs/xapi-integration.md). |
 
 > ⚠️ `.env` is gitignored; never commit any `*_API_KEY`.
 
@@ -373,7 +377,7 @@ TradeShield-AI/
 │   ├── mcp/  ·  rag/  ·  skill/
 ├── hardhat/               # Solidity contracts + tests
 ├── scripts/               # check / demo / smoke / scenarios / price / qa / mcp / agent-valuation
-├── tests/                 # node --test (148 passing)
+├── tests/                 # node --test (154 passing)
 └── docs/                  # PRD · background · contracts · tasks · acceptance · award-roadmap
 ```
 
@@ -382,7 +386,7 @@ TradeShield-AI/
 | Command | Verifies | Status |
 |---|---|---|
 | `npm run check` | files / scripts / seed / engine integrity | ✅ |
-| `npm run test` | unit + integration (pricing invariants, schema, MCP, contract mock…) | ✅ 148 passing |
+| `npm run test` | unit + integration (pricing invariants, schema, MCP, contract mock…) | ✅ 154 passing |
 | `npm run smoke` | key APIs end-to-end | ✅ |
 | `npm run scenarios` | fast / balanced / reprice / pause regression | ✅ |
 | `cd hardhat && npx hardhat test` | Solidity contract suite | ✅ 11 passing |
@@ -402,6 +406,7 @@ insurance coverage. The demo uses permissioned mock investors only.
 - [`docs/contracts.md`](./docs/contracts.md) — frozen contract interfaces
 - [`docs/award-roadmap.md`](./docs/award-roadmap.md) — capability & award roadmap
 - [`docs/ai-valuation-tooling.md`](./docs/ai-valuation-tooling.md) — AI valuation tool-calling
+- [`docs/xapi-integration.md`](./docs/xapi-integration.md) — live world-risk signals via xAPI (X/Twitter · news · prediction markets)
 
 <div align="right"><a href="#english">↑ back to top</a></div>
 
@@ -435,7 +440,8 @@ TradeShield 把两端接起来——并把最危险的那一步交给一个 AI A
 | 🧠 | **定价建立在可验证的利润上** | 折价不是拍脑袋的 LTV。它等于出口商的*融资成本*，并取自其**可验证贸易利润** `P = 发票 − 拿货成本` 的一个份额。完全可解释。 |
 | 🔭 | **能看穿欺骗性信号** | 战争推高铜价时，价格预言机以为抵押*更安全*；Agent 知道战争溢价是**相关性双刃剑**（违约↑、保险失效、回收↓），于是反向操作：haircut + **暂停**。 |
 | 🔗 | **有据可查：工具调用 + RAG 检索** | 调用实时 LME 铜价、区域升水、UN Comtrade 历史同类成交价；RAG 检索器带来源引用宏观风险情报 → 一张可审计的**证据图**。 |
-| ⛓️ | **已上链 Sepolia，且有安全护栏** | 每个决策带 `quote_hash` / `evidence_hash` 锚定上链。LLM **绝不**单独定最终价——确定性引擎 + schema 护栏校验；**148 + 11 个测试**守护不变量。 |
+| 🌐 | **xAPI 实时世界风险** | 通过 [xAPI](https://xapi.to) 拉取 X/Twitter、Google 新闻、预测市场（Polymarket 类）信号，映射成结构化风险事件并入定价——*AI 为这批货实时给真实世界事件定价*。无密钥时走离线兜底，demo 永远能跑。 |
+| ⛓️ | **已上链 Sepolia，且有安全护栏** | 每个决策带 `quote_hash` / `evidence_hash` 锚定上链。LLM **绝不**单独定最终价——确定性引擎 + schema 护栏校验；**154 + 11 个测试**守护不变量。 |
 
 ### 🧠 创新点 —— 把「折价」建立在可验证的贸易利润上
 
@@ -516,7 +522,7 @@ issue_price     = cash / (cash + share × P)              ← 发行价（对 $1
         ┌───────────────────┴────────┐          ┌────────────┴───────────────┐
         │   AI 定价引擎 (src/core)     │          │  MCP / RAG / Skill (src/…)  │
         │  pricingEngine · scoreRisk  │          │  5 个工具 · 风险情报检索     │
-        │  offeringSimulator · oracle │          │  评委 Q&A 助手               │
+        │  offeringSimulator · oracle │          │  Q&A 助手               │
         └───────────────────┬─────────┘          └─────────────────────────────┘
                             │ quote_hash / evidence_hash
             ┌───────────────┴───────────────────────────────────────────────┐
@@ -648,8 +654,9 @@ TradeShield Agent harness running at http://localhost:3000
 | `npm run qa` | 评委 Q&A 彩排（真实定价数字 + RAG 引用；`-- "你的问题"` 问单题） |
 | `npm run mcp` | 演示 MCP 工具链（get_trade_case → search → price → simulate → push oracle） |
 | `npm run agent:value` | 跑 AI 货值估值工具（实时价 / 历史成交价 / 估值，离线有 fallback） |
+| `npm run intel` | **xAPI 实时世界风险**：X/Twitter + 新闻 + 预测市场信号 → 风险事件 → 重新定价（无密钥走离线兜底） |
 | `npm run check` | 最低成本自检：文件、脚本、seed 数据、引擎完好 |
-| `npm run test` | 全部单元 / 集成测试（`node --test`，**148 passing**） |
+| `npm run test` | 全部单元 / 集成测试（`node --test`，**154 passing**） |
 | `npm run smoke` | 启动临时 server，冒烟测试关键 API |
 
 > 演示前一键全验证：
@@ -672,6 +679,7 @@ TradeShield Agent harness running at http://localhost:3000
 | GET/POST | `/api/scenarios` · `/api/scenarios/run` | 场景回归 |
 | GET/POST | `/api/mcp/tools` · `/api/mcp/call` | MCP 工具清单 / 调用 |
 | POST/GET | `/api/rag/search` · `/api/rag/judge-qa` | RAG 检索 / 评委问答 |
+| POST | `/api/intel/world-risk` | xAPI 实时世界风险扫描 → 事件 + 信号 + 并入前后的重新定价 |
 
 **对比三档到账速度：**
 ```bash
@@ -700,6 +708,7 @@ curl -s -X POST http://localhost:3000/api/offering/simulate \
 | `LLM_BASE_URL` / `LLM_API_KEY` | 任意 OpenAI 兼容端点 |
 | `ALPHAVANTAGE_API_KEY` / `METALPRICE_API_KEY` | 实时铜价（USD/MT） |
 | `COMTRADE_PRIMARY_KEY` | UN Comtrade 历史同类成交价（按 HS code，免费） |
+| `XAPI_KEY` | [xAPI](https://xapi.to) — 实时世界风险信号（X/Twitter · 新闻 · 预测市场），供 `npm run intel` / `/api/intel/world-risk`。注册：`npx xapi-to register`（邀请码 `xapito`）。详见 [`docs/xapi-integration.md`](./docs/xapi-integration.md)。 |
 
 > ⚠️ `.env` 已被 gitignore；任何 `*_API_KEY` 都不要提交。
 
@@ -750,7 +759,7 @@ TradeShield-AI/
 │   ├── mcp/  ·  rag/  ·  skill/
 ├── hardhat/               # Solidity 合约 + 测试
 ├── scripts/               # check / demo / smoke / scenarios / price / qa / mcp / agent-valuation
-├── tests/                 # node --test（148 passing）
+├── tests/                 # node --test（154 passing）
 └── docs/                  # PRD · background · contracts · tasks · acceptance · award-roadmap
 ```
 
@@ -759,7 +768,7 @@ TradeShield-AI/
 | 命令 | 验证什么 | 现状 |
 |---|---|---|
 | `npm run check` | 文件 / 脚本 / seed / 引擎完好 | ✅ |
-| `npm run test` | 单元 + 集成（定价不变量、schema、MCP、合约 mock…） | ✅ 148 passing |
+| `npm run test` | 单元 + 集成（定价不变量、schema、MCP、合约 mock…） | ✅ 154 passing |
 | `npm run smoke` | 关键 API 端到端 | ✅ |
 | `npm run scenarios` | fast / balanced / reprice / pause 场景回归 | ✅ |
 | `cd hardhat && npx hardhat test` | Solidity 合约测试 | ✅ 11 passing |
@@ -777,6 +786,7 @@ TradeShield-AI/
 - [`docs/contracts.md`](./docs/contracts.md) — 合约接口冻结设计
 - [`docs/award-roadmap.md`](./docs/award-roadmap.md) — 能力与拿奖路线
 - [`docs/ai-valuation-tooling.md`](./docs/ai-valuation-tooling.md) — AI 估值 tool calling
+- [`docs/xapi-integration.md`](./docs/xapi-integration.md) — xAPI 实时世界风险接入（X/Twitter · 新闻 · 预测市场）
 
 <div align="right"><a href="#chinese">↑ 回到顶部</a></div>
 

@@ -17,6 +17,7 @@
     "agent:value": "node scripts/agent-valuation.mjs",
     "price": "node scripts/price.mjs",
     "qa": "node scripts/judge-qa.mjs",
+    "intel": "node scripts/world-intel.mjs",
     "mcp": "node scripts/mcp.mjs"
   },
   "engines": {

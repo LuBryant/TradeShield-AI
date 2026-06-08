@@ -209,6 +209,18 @@ const DICT = {
     co_repriced: '↓ 风险升至 {level} —— AI 将发行价 {a} 重定价至 {b}（投资者潜在收益扩大至 {y}）。',
     co_held: '风险重估为 {level}；价格维持在 {p}。',
 
+    // world risk (xAPI)
+    wp_h: '实时世界风险情报（xAPI）',
+    wp_sub: '通过 xAPI 拉取 X/推特、官方发言、新闻与预测市场等真实信号，AI 据此对这批货实时风控并重新定价。',
+    wr_refresh: '↻ 刷新实时信号', wr_apply: '⚡ 用实时情报重新定价', wr_applied: '✓ 已并入实时风控定价',
+    wr_loading: '拉取实时世界风险…', wr_none: '未发现升高的真实世界风险信号。',
+    wr_live: '● 实时 (xAPI)', wr_offline: '○ 离线兜底（设 XAPI_KEY 启用实时）',
+    wr_impact_head: 'AI 实时重定价影响', wr_before: '当前', wr_after: '并入实时风险后',
+    wr_signals_head: '抓取到的实时信号（含来源）',
+    wr_sig_tweets: '推文 / X', wr_sig_officials: '官方 / 政要发言', wr_sig_news: '新闻', wr_sig_markets: '预测市场赔率',
+    wr_events_head: 'AI 据此推导的风险事件',
+    wr_fetch_fail: '拉取实时风险失败: {msg}',
+
     // footer
     footer_left: 'TradeShield Agent · ETHBeijing 2026 hackathon',
     footer_right: '所有数字由本地 AI 定价引擎实时产生 · 货值估算、风险评分与哈希均确定性、可离线复现 · 上链锚定于 Sepolia 测试网'
@@ -360,6 +372,18 @@ const DICT = {
     co_paused: '⏸ In-transit risk escalated to {level} — the AI PAUSED the offering. New evidence {hash}.',
     co_repriced: '↓ Risk rose to {level} — AI repriced {a} → {b} (investor upside widened to {y}).',
     co_held: 'Risk reassessed to {level}; price held at {p}.',
+
+    // world risk (xAPI)
+    wp_h: 'Live World-Risk Intelligence (xAPI)',
+    wp_sub: 'Pulls real signals via xAPI — X/Twitter, officials, news and prediction markets — so the AI risk-controls and reprices this cargo in real time.',
+    wr_refresh: '↻ Refresh live signals', wr_apply: '⚡ Reprice with live intel', wr_applied: '✓ Folded into live risk pricing',
+    wr_loading: 'Fetching live world risk…', wr_none: 'No elevated real-world risk signals detected.',
+    wr_live: '● Live (xAPI)', wr_offline: '○ Offline fixtures (set XAPI_KEY to go live)',
+    wr_impact_head: 'AI live re-pricing impact', wr_before: 'Current', wr_after: 'With live risk',
+    wr_signals_head: 'Live signals captured (with sources)',
+    wr_sig_tweets: 'Tweets / X', wr_sig_officials: 'Officials', wr_sig_news: 'News', wr_sig_markets: 'Prediction markets',
+    wr_events_head: 'Risk events the AI derived',
+    wr_fetch_fail: 'Failed to fetch live risk: {msg}',
 
     // footer
     footer_left: 'TradeShield Agent · ETHBeijing 2026 hackathon',

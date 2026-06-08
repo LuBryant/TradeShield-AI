@@ -48,6 +48,10 @@ let pausedFill = null; // frozen subscription fill (0..1) while the offering is 
 const appliedKeys = new Set();
 const sweepCache = new Map();      // caseId -> sweep results array
 const baselineCache = new Map();   // `${caseId}|${speed}` -> offering
+const worldRiskCache = new Map();  // caseId -> /api/intel/world-risk assessment
+let worldRiskApplied = false;      // whether live world-risk events are folded into pricing
+let worldRiskEvents = [];          // those events, tagged category:'macro' for the offering sim
+let lastAssessment = null;         // last world-risk assessment (re-rendered on lang toggle / apply)
 let wired = false;
 
 // ===========================================================================
@@ -65,6 +69,8 @@ export function initVoyage() {
   $('#event-reset').addEventListener('click', resetVoyage);
   $('#rag-search-btn').addEventListener('click', runRagSearch);
   $('#rag-query').addEventListener('keydown', (e) => { if (e.key === 'Enter') runRagSearch(); });
+  $('#wr-fetch').addEventListener('click', () => fetchWorldRisk(true));
+  $('#wr-apply').addEventListener('click', applyWorldRisk);
 }
 
 export function renderVoyage() {
@@ -80,11 +86,13 @@ export function renderVoyage() {
     depDate = f.parseDate(bl.shipped_on_board || bl.issue_date);
     etaDate = f.parseDate(bl.eta);
     clock.progress = initialProgress();
+    worldRiskApplied = false;
+    worldRiskEvents = [];
   }
 
   // Refresh injected-event display objects to the current language (no re-quote;
   // pricing depends on event type/severity, not the localized description).
-  if (appliedKeys.size) rebuildEventObjects();
+  if (appliedKeys.size || worldRiskApplied) rebuildEventObjects();
 
   renderRoute(bl);
   updateShip();
@@ -95,6 +103,7 @@ export function renderVoyage() {
 
   refreshLifecycle();
   refreshRiskFeed();
+  refreshWorldRisk();
 }
 
 export function startVoyageClock() {
@@ -236,6 +245,7 @@ function rebuildEventObjects() {
     const def = EVENTS.find((e) => e.key === k);
     if (def) state.voyageEvents.push(...def.build());
   }
+  if (worldRiskApplied && worldRiskEvents.length) state.voyageEvents.push(...worldRiskEvents);
   state.voyageInjected = state.voyageEvents.length > 0;
 }
 
@@ -279,6 +289,8 @@ async function toggleEvent(key) {
 
 function resetVoyage() {
   appliedKeys.clear();
+  worldRiskApplied = false;
+  worldRiskEvents = [];
   state.voyageEvents = [];
   state.voyageInjected = false;
   state.voyageOffering = null;
@@ -287,6 +299,7 @@ function resetVoyage() {
   renderCallout();
   refreshLifecycle();
   refreshRiskFeed();
+  if (lastAssessment) renderWorldRisk(lastAssessment);
   $('#event-reset').hidden = true;
 }
 
@@ -456,4 +469,155 @@ async function runRagSearch() {
   } catch (e) {
     box.innerHTML = `<p class="error">${e.message}</p>`;
   }
+}
+
+// ===========================================================================
+// Live world risk (xAPI): real signals -> risk events -> live re-pricing
+// ===========================================================================
+async function fetchWorldRisk(force = false) {
+  if (!state.caseData) return;
+  const id = state.caseId;
+  if (!force && worldRiskCache.has(id)) { renderWorldRisk(worldRiskCache.get(id)); return; }
+  $('#wr-body').innerHTML = `<p class="muted">${t('wr_loading')}</p>`;
+  try {
+    const res = await api.worldRisk(state.caseData);
+    worldRiskCache.set(id, res);
+    if (state.caseId === id) renderWorldRisk(res);
+  } catch (e) {
+    $('#wr-body').innerHTML = `<p class="error">${t('wr_fetch_fail', { msg: e.message })}</p>`;
+  }
+}
+
+function refreshWorldRisk() {
+  if (worldRiskCache.has(state.caseId)) renderWorldRisk(worldRiskCache.get(state.caseId));
+  else fetchWorldRisk(false);
+}
+
+function wrSigItem(text, source) {
+  return el('div', { class: 'wr-sig-item' },
+    el('p', { class: 'wr-sig-text', text }),
+    source ? el('span', { class: 'wr-source', text: t('feed_source') + source }) : null
+  );
+}
+
+function wrSigGroup(titleKey, items) {
+  if (!items.length) return null;
+  return el('div', { class: 'wr-sig-group' },
+    el('div', { class: 'wr-sig-grouphead' },
+      el('span', { class: 'wr-sig-title', text: t(titleKey) }),
+      el('span', { class: 'wr-sig-count', text: String(items.length) })
+    ),
+    ...items
+  );
+}
+
+function renderWorldRisk(res) {
+  lastAssessment = res;
+
+  const mode = $('#wr-mode');
+  if (mode) {
+    mode.textContent = res.live ? t('wr_live') : t('wr_offline');
+    mode.className = `wr-mode ${res.live ? 'live' : 'offline'}`;
+  }
+
+  const hasEvents = Array.isArray(res.events) && res.events.length > 0;
+  const applyBtn = $('#wr-apply');
+  if (applyBtn) {
+    applyBtn.hidden = !hasEvents;
+    applyBtn.disabled = worldRiskApplied;
+    applyBtn.textContent = worldRiskApplied ? t('wr_applied') : t('wr_apply');
+  }
+
+  const body = $('#wr-body');
+  clear(body);
+
+  // 1) live re-pricing impact (before -> after)
+  const before = res.before_quote, after = res.after_quote;
+  if (before && after) {
+    const aMeta = f.actionMeta(after.pricing_action);
+    const bMeta = f.actionMeta(before.pricing_action);
+    body.append(el('div', { class: `wr-impact tone-${aMeta.tone}` },
+      el('span', { class: 'wr-impact-head', text: t('wr_impact_head') }),
+      el('div', { class: 'wr-impact-row' },
+        el('div', { class: 'wr-side' },
+          el('span', { class: 'wr-side-label', text: t('wr_before') }),
+          el('span', { class: 'wr-side-price', text: `$${f.price(before.final_issue_price_usd)}` }),
+          el('span', { class: `badge sm tone-${f.riskTone(before.risk_level)}`, text: `${f.int(before.risk_score_bps)}bps` }),
+          el('span', { class: `badge sm tone-${bMeta.tone}`, text: bMeta.label })
+        ),
+        el('span', { class: 'wr-arrow', text: '→' }),
+        el('div', { class: 'wr-side' },
+          el('span', { class: 'wr-side-label', text: t('wr_after') }),
+          el('span', { class: 'wr-side-price strong', text: `$${f.price(after.final_issue_price_usd)}` }),
+          el('span', { class: `badge sm tone-${f.riskTone(after.risk_level)}`, text: `${f.int(after.risk_score_bps)}bps` }),
+          el('span', { class: `badge sm tone-${aMeta.tone}`, text: `${aMeta.icon} ${aMeta.label}` })
+        )
+      )
+    ));
+  }
+
+  // 2) AI summary
+  if (res.summary) body.append(el('p', { class: 'wr-summary', text: res.summary }));
+
+  // 3) derived risk events
+  const events = res.events ?? [];
+  if (events.length) {
+    body.append(el('h4', { class: 'wr-subhead', text: t('wr_events_head') }));
+    const evWrap = el('div', { class: 'wr-events' });
+    for (const e of events) {
+      evWrap.append(el('div', { class: `wr-ev tone-${sevTone(e.severity)}` },
+        el('span', { class: `badge sm tone-${sevTone(e.severity)}`, text: (e.severity || 'info').toUpperCase() }),
+        el('span', { class: 'wr-ev-type', text: (e.type || '').replace(/_/g, ' ') }),
+        e.region ? el('span', { class: 'wr-ev-region', text: e.region }) : null,
+        (e.evidence && e.evidence[0]) ? el('span', { class: 'wr-ev-cite', text: e.evidence[0] }) : null
+      ));
+    }
+    body.append(evWrap);
+  } else {
+    body.append(el('p', { class: 'muted', text: t('wr_none') }));
+  }
+
+  // 4) captured live signals (with sources)
+  const s = res.signals ?? {};
+  const tweetItems = (s.tweets ?? []).slice(0, 3).map((x) => wrSigItem(`@${x.author ?? '?'}: ${x.text ?? ''}`, x.author ? `x.com/${x.author}` : null));
+  const offItems = (s.officials ?? []).slice(0, 2).map((x) => wrSigItem(`@${x.author ?? '?'}: ${x.text ?? ''}`, x.author ? `x.com/${x.author}` : null));
+  const newsItems = (s.news ?? []).slice(0, 3).map((x) => wrSigItem(x.title ?? '', [x.source, x.date].filter(Boolean).join(' · ')));
+  const mktItems = (s.prediction_markets ?? []).slice(0, 3).map((x) => wrSigItem(`${Math.round((x.implied_prob ?? 0) * 100)}% — ${x.market ?? x.question ?? ''}`, x.platform ?? 'prediction market'));
+  const groups = [
+    wrSigGroup('wr_sig_markets', mktItems),
+    wrSigGroup('wr_sig_tweets', tweetItems),
+    wrSigGroup('wr_sig_officials', offItems),
+    wrSigGroup('wr_sig_news', newsItems)
+  ].filter(Boolean);
+  if (groups.length) {
+    body.append(el('h4', { class: 'wr-subhead', text: t('wr_signals_head') }));
+    body.append(el('div', { class: 'wr-signals' }, ...groups));
+  }
+}
+
+async function applyWorldRisk() {
+  if (!lastAssessment?.events?.length) return;
+  worldRiskApplied = true;
+  worldRiskEvents = lastAssessment.events.map((e) => ({
+    category: 'macro', type: e.type, severity: e.severity, region: e.region,
+    description: e.description, source: e.source || 'xAPI/world-intel'
+  }));
+  rebuildEventObjects();
+  try {
+    state.voyageOffering = state.voyageInjected
+      ? await api.simulateOffering(state.caseData, { payout_speed: state.speed, events: state.voyageEvents })
+      : null;
+  } catch (e) {
+    worldRiskApplied = false;
+    rebuildEventObjects();
+    toast(t('t_reprice_fail', { msg: e.message }), true);
+    return;
+  }
+  renderEventButtons();
+  renderLive(liveQuote());
+  renderCallout();
+  refreshLifecycle();
+  refreshRiskFeed();
+  $('#event-reset').hidden = !state.voyageInjected;
+  renderWorldRisk(lastAssessment);
 }

@@ -198,9 +198,22 @@
           <div id="voyage-callout" class="lc-callout" hidden></div>
         </section>
 
+        <section class="panel" id="worldrisk-panel">
+          <div class="panel-head">
+            <h2><span class="seq">3</span> <span data-i18n="wp_h">实时世界风险情报（xAPI）</span></h2>
+            <p class="panel-sub" data-i18n="wp_sub">通过 xAPI 拉取 X/推特、官方发言、新闻与预测市场等真实信号，AI 据此对这批货实时风控并重新定价。</p>
+            <div class="timeline-actions">
+              <button id="wr-fetch" class="btn ghost sm" data-i18n="wr_refresh">↻ 刷新实时信号</button>
+              <button id="wr-apply" class="btn sm" data-i18n="wr_apply" hidden>⚡ 用实时情报重新定价</button>
+              <span id="wr-mode" class="wr-mode"></span>
+            </div>
+          </div>
+          <div id="wr-body" class="wr-body"><p class="muted" data-i18n="wr_loading">拉取实时世界风险…</p></div>
+        </section>
+
         <section class="panel" id="events-panel">
           <div class="panel-head">
-            <h2><span class="seq">3</span> <span data-i18n="vp3_h">突发事件模拟（Demo）</span></h2>
+            <h2><span class="seq">4</span> <span data-i18n="vp3_h">突发事件模拟（Demo）</span></h2>
             <p class="panel-sub" data-i18n="vp3_sub">点击模拟航运途中发生的突发事件，观察 AI 如何重定价 RWA。</p>
             <div class="timeline-actions">
               <div id="event-btns" class="event-btns"></div>
@@ -213,7 +226,7 @@
 
         <section class="panel" id="intel-panel">
           <div class="panel-head">
-            <h2><span class="seq">4</span> <span data-i18n="vp4_h">AI 风险情报（含来源）</span></h2>
+            <h2><span class="seq">5</span> <span data-i18n="vp4_h">AI 风险情报（含来源）</span></h2>
             <p class="panel-sub" data-i18n="vp4_sub">AI 收集的宏观/地缘风险事件，每条标注信息来源；可搜索 RAG 知识库。</p>
           </div>
           <div class="card">

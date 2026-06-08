@@ -359,6 +359,34 @@ export function createServer() {
         return;
       }
 
+      // INTEL: live real-world risk via xAPI (Twitter/X + Google News + prediction
+      // markets) -> structured macro_risk_events -> re-priced quote (before/after).
+      // No XAPI_KEY -> deterministic offline fixtures, so the endpoint never breaks.
+      if (request.method === 'POST' && url.pathname === '/api/intel/world-risk') {
+        const body = await readJsonBody(request);
+        const caseData = looksLikeCase(body) ? body : (isRecord(body) && body.case ? body.case : await loadDemoCase());
+        const { assessWorldRisk } = await import('../agent/worldRiskAgent.js');
+        const { repriceWithWorldRisk } = await import('../core/worldRiskPricing.js');
+        const assessment = await assessWorldRisk(caseData, {});
+        const repriced = repriceWithWorldRisk(caseData, assessment.events);
+        sendJson(response, 200, {
+          ok: true,
+          live: assessment.live,
+          provider: assessment.provider,
+          queried: assessment.queried,
+          profile: assessment.profile,
+          events: assessment.events,
+          signals: assessment.signals,
+          sources: assessment.sources,
+          summary: assessment.summary,
+          evidence_hash: assessment.evidence_hash,
+          before_quote: repriced.before,
+          after_quote: repriced.after,
+          delta: repriced.delta
+        });
+        return;
+      }
+
       // SKILL-1: Run pricing analyst
       if (request.method === 'POST' && url.pathname === '/api/skill/pricing-analyst') {
         const body = await readJsonBody(request);
